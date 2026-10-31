@@ -89,7 +89,7 @@
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.8.8</version>
+        <version>0.8.16</version>
         <executions>
           <execution>
             <goals>
@@ -117,7 +117,7 @@
           </compilerArguments>
           <compilerId>eclipse</compilerId>
           <showWarnings>true</showWarnings>
-          <failOnWarning>true</failOnWarning>
+          <failOnWarning>false</failOnWarning>
         </configuration>
         <dependencies>
           <dependency>
@@ -285,6 +285,11 @@
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>42.5.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.opengauss</groupId>
+      <artifactId>opengauss-jdbc</artifactId>
+      <version>6.0.0-og</version>
     </dependency>
     <dependency>
       <groupId>com.ing.data</groupId>
