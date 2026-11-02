@@ -22,9 +22,9 @@ public class GaussDBDQPReproducer implements Reproducer<GaussDBGlobalState> {
     public boolean bugStillTriggers(GaussDBGlobalState globalState) {
         try (Statement statement = globalState.getConnection().createStatement()) {
             try {
-                GaussDBDQPOracle.applyGucs(statement, GaussDBDQPOracle.RESET_GUCS);
+                GaussDBDQPOracle.applyGucs(statement, GaussDBDQPOracle.RESET_GUCS, null);
                 List<String> baseRows = GaussDBDQPOracle.executeAndGetRows(statement, baseQuery, null);
-                GaussDBDQPOracle.applyGucs(statement, variant.getGucSettings());
+                GaussDBDQPOracle.applyGucs(statement, variant.getGucSettings(), null);
                 List<String> variantRows = GaussDBDQPOracle.executeAndGetRows(statement, variant.getSql(), null);
                 return !GaussDBDQPOracle.areEquivalent(baseRows, variantRows);
             } finally {

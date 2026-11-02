@@ -391,7 +391,7 @@ public class GaussDBEPSCOracle implements TestOracle<GaussDBGlobalState> {
         }
         String originalQuery = GaussDBToStringVisitor.asString(originalAst);
         String parameterizedBody = GaussDBToStringVisitor.asString(parameterizedAst);
-        String paramTypes = parameters.stream().map(c -> sqlTypeName(c.getExpressionType()))
+        String paramTypes = parameters.stream().map(GaussDBEPSCOracle::sqlTypeName)
                 .collect(Collectors.joining(", "));
         String paramValues = parameters.stream().map(GaussDBToStringVisitor::asString)
                 .collect(Collectors.joining(", "));
@@ -402,10 +402,19 @@ public class GaussDBEPSCOracle implements TestOracle<GaussDBGlobalState> {
         return new PreparedQueryPlan(originalQuery, prepareSql, executeSql, deallocateSql, parameters);
     }
 
+    static String sqlTypeName(GaussDBConstant constant) {
+        GaussDBDataType type = constant.getExpressionType();
+        if ((type == GaussDBDataType.DECIMAL || type == GaussDBDataType.FLOAT || type == GaussDBDataType.REAL)
+                && !GaussDBToStringVisitor.asString(constant).contains(".")) {
+            return "INT";
+        }
+        return sqlTypeName(type);
+    }
+
     static String sqlTypeName(GaussDBDataType type) {
         switch (type) {
         case INT:
-            return "BIGINT";
+            return "INT";
         case BOOLEAN:
             return "BOOLEAN";
         case TEXT:

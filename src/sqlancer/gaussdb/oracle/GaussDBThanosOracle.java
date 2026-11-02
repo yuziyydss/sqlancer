@@ -7,7 +7,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import sqlancer.IgnoreMeException;
@@ -50,6 +52,7 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
 
     private final GaussDBGlobalState state;
     private final ExpectedErrors errors = new ExpectedErrors();
+    private final Set<String> materializedTables = new HashSet<>();
     private GaussDBThanosReproducer reproducer;
     private String lastQueryString;
 
@@ -295,32 +298,33 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
             String base = table.getName();
             String astore = base + ASTORE_SUFFIX;
             String ustore = base + USTORE_SUFFIX;
-            setup.add("DROP TABLE IF EXISTS " + astore + ", " + ustore + " CASCADE");
-            setup.add("CREATE TABLE " + astore + " WITH (storage_type = astore) AS SELECT * FROM " + base);
-            setup.add("CREATE TABLE " + ustore + " WITH (storage_type = ustore) AS SELECT * FROM " + base);
+            if (materializedTables.add(base)) {
+                setup.add("DROP TABLE IF EXISTS " + astore + ", " + ustore + " CASCADE");
+                setup.add("CREATE TABLE " + astore + " WITH (storage_type = astore) AS SELECT * FROM " + base);
+                setup.add("CREATE TABLE " + ustore + " WITH (storage_type = ustore) AS SELECT * FROM " + base);
 
-            if (!table.getColumns().isEmpty() && Randomly.getBoolean()) {
-                GaussDBColumn indexedCol = Randomly.fromList(table.getColumns());
-                setup.add("CREATE INDEX " + astore + "_idx ON " + astore + " USING btree (" + indexedCol.getName()
-                        + ")");
-                setup.add("CREATE INDEX " + ustore + "_idx ON " + ustore + " USING ubtree (" + indexedCol.getName()
-                        + ")");
+                if (!table.getColumns().isEmpty() && Randomly.getBoolean()) {
+                    GaussDBColumn indexedCol = Randomly.fromList(table.getColumns());
+                    setup.add("CREATE INDEX " + astore + "_idx ON " + astore + " USING btree (" + indexedCol.getName()
+                            + ")");
+                    setup.add("CREATE INDEX " + ustore + "_idx ON " + ustore + " USING ubtree (" + indexedCol.getName()
+                            + ")");
+                }
+
+                // Exercise Ustore in-place update / undo-record path while keeping both tables logically identical:
+                // perform an identical deterministic DML statement on both twins when chosen.
+                if (state != null && !table.getColumns().isEmpty() && Randomly.getBoolean()) {
+                    GaussDBColumn targetCol = Randomly.fromList(table.getColumns());
+                    String constantSql = GaussDBToStringVisitor.asString(
+                            GaussDBExpressionGenerator.generateConstant(state.getRandomly(), targetCol.getType()));
+                    setup.add("INSERT INTO " + astore + "(" + targetCol.getName() + ") VALUES (" + constantSql + ")");
+                    setup.add("INSERT INTO " + ustore + "(" + targetCol.getName() + ") VALUES (" + constantSql + ")");
+                    setup.add("UPDATE " + astore + " SET " + targetCol.getName() + " = " + targetCol.getName()
+                            + " WHERE " + targetCol.getName() + " IS NOT NULL");
+                    setup.add("UPDATE " + ustore + " SET " + targetCol.getName() + " = " + targetCol.getName()
+                            + " WHERE " + targetCol.getName() + " IS NOT NULL");
+                }
             }
-
-            // Exercise Ustore in-place update / undo-record path while keeping both tables logically identical:
-            // perform an identical deterministic DML statement on both twins when chosen.
-            if (!table.getColumns().isEmpty() && Randomly.getBoolean()) {
-                GaussDBColumn targetCol = Randomly.fromList(table.getColumns());
-                String constantSql = GaussDBToStringVisitor.asString(
-                        GaussDBExpressionGenerator.generateConstant(state.getRandomly(), targetCol.getType()));
-                setup.add("INSERT INTO " + astore + "(" + targetCol.getName() + ") VALUES (" + constantSql + ")");
-                setup.add("INSERT INTO " + ustore + "(" + targetCol.getName() + ") VALUES (" + constantSql + ")");
-                setup.add("UPDATE " + astore + " SET " + targetCol.getName() + " = " + targetCol.getName() + " WHERE "
-                        + targetCol.getName() + " IS NOT NULL");
-                setup.add("UPDATE " + ustore + " SET " + targetCol.getName() + " = " + targetCol.getName() + " WHERE "
-                        + targetCol.getName() + " IS NOT NULL");
-            }
-
             cleanup.add("DROP TABLE IF EXISTS " + astore + ", " + ustore + " CASCADE");
         }
         return new EngineQueryPair(setup, astoreQuery, ustoreQuery, cleanup);
@@ -330,28 +334,22 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
         lastQueryString = pair.getAstoreQuery();
         SQLConnection connection = state.getConnection();
         try (Statement statement = connection.createStatement()) {
-            try {
-                for (String sql : pair.getSetupSql()) {
-                    executeSetup(statement, sql);
-                }
-                List<String> astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
-                List<String> ustoreResults = executeAndGetRows(statement, pair.getUstoreQuery());
-                if (areEquivalent(astoreResults, ustoreResults)) {
-                    return;
-                }
-                // Re-run once to rule out nondeterministic expressions.
-                astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
-                ustoreResults = executeAndGetRows(statement, pair.getUstoreQuery());
-                if (!areEquivalent(astoreResults, ustoreResults)) {
-                    reproducer = new GaussDBThanosReproducer(pair);
-                    throw new AssertionError("Thanos storage-engine mismatch (astore vs ustore)\nAstoreQuery: "
-                            + pair.getAstoreQuery() + "\nUstoreQuery: " + pair.getUstoreQuery() + "\nAstoreResult: "
-                            + astoreResults + "\nUstoreResult: " + ustoreResults);
-                }
-            } finally {
-                for (String sql : pair.getCleanupSql()) {
-                    quietlyExecute(statement, sql);
-                }
+            for (String sql : pair.getSetupSql()) {
+                executeSetup(statement, sql);
+            }
+            List<String> astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
+            List<String> ustoreResults = executeAndGetRows(statement, pair.getUstoreQuery());
+            if (areEquivalent(astoreResults, ustoreResults)) {
+                return;
+            }
+            // Re-run once to rule out nondeterministic expressions.
+            astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
+            ustoreResults = executeAndGetRows(statement, pair.getUstoreQuery());
+            if (!areEquivalent(astoreResults, ustoreResults)) {
+                reproducer = new GaussDBThanosReproducer(pair);
+                throw new AssertionError("Thanos storage-engine mismatch (astore vs ustore)\nAstoreQuery: "
+                        + pair.getAstoreQuery() + "\nUstoreQuery: " + pair.getUstoreQuery() + "\nAstoreResult: "
+                        + astoreResults + "\nUstoreResult: " + ustoreResults);
             }
         }
     }
@@ -395,14 +393,6 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
         List<String> copy = new ArrayList<>(values);
         copy.sort(Comparator.nullsFirst(Comparator.naturalOrder()));
         return copy;
-    }
-
-    private static void quietlyExecute(Statement statement, String sql) {
-        try {
-            statement.execute(sql);
-        } catch (SQLException ignored) {
-            // Best-effort cleanup.
-        }
     }
 
     @Override

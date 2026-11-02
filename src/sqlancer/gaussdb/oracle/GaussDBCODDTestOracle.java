@@ -32,6 +32,7 @@ import sqlancer.gaussdb.ast.GaussDBConstant;
 import sqlancer.gaussdb.ast.GaussDBExists;
 import sqlancer.gaussdb.ast.GaussDBExpression;
 import sqlancer.gaussdb.ast.GaussDBExpressionBag;
+import sqlancer.gaussdb.ast.GaussDBFunction;
 import sqlancer.gaussdb.ast.GaussDBInOperation;
 import sqlancer.gaussdb.ast.GaussDBInSubquery;
 import sqlancer.gaussdb.ast.GaussDBJoin;
@@ -159,14 +160,11 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
 
         SQLConnection con = state.getConnection();
         try (Statement s = con.createStatement()) {
-            String foldedConstant;
-            try (ResultSet rs = s.executeQuery(auxiliaryQuery)) {
-                if (!rs.next()) {
-                    return;
-                }
-                String value = rs.getString(1);
-                foldedConstant = rs.wasNull() ? "NULL" : booleanLiteral(value);
+            String[] scalar = executeSingleScalar(s, auxiliaryQuery);
+            if (scalar == null) {
+                return;
             }
+            String foldedConstant = scalar[0] == null ? "NULL" : booleanLiteral(scalar[0]);
             expressionBag.updateInnerExpression(constantFromValue(foldedConstant, GaussDBDataType.BOOLEAN));
             String foldedQuery = GaussDBToStringVisitor.asString(originalSelect);
             List<String> originalResults = executeAndGetRows(s, originalQuery);
@@ -197,12 +195,7 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
 
         SQLConnection con = state.getConnection();
         try (Statement s = con.createStatement()) {
-            List<String[]> auxiliaryRows = new ArrayList<>();
-            try (ResultSet rs = s.executeQuery(auxiliaryQuery)) {
-                while (rs.next()) {
-                    auxiliaryRows.add(new String[] { rs.getString(1), rs.getString(2) });
-                }
-            }
+            List<String[]> auxiliaryRows = executeTwoColumnRows(s, auxiliaryQuery);
             if (auxiliaryRows.isEmpty()) {
                 return;
             }
@@ -248,14 +241,11 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
 
         SQLConnection con = state.getConnection();
         try (Statement s = con.createStatement()) {
-            String foldedConstant;
-            try (ResultSet rs = s.executeQuery(GaussDBToStringVisitor.asString(subquerySelect))) {
-                if (!rs.next()) {
-                    return;
-                }
-                String value = rs.getString(1);
-                foldedConstant = rs.wasNull() ? "NULL" : value;
+            String[] scalar = executeSingleScalar(s, GaussDBToStringVisitor.asString(subquerySelect));
+            if (scalar == null) {
+                return;
             }
+            String foldedConstant = scalar[0] == null ? "NULL" : scalar[0];
             subqueryBag.updateInnerExpression(constantFromValue(foldedConstant, targetColumn.getType()));
             String foldedQuery = GaussDBToStringVisitor.asString(originalSelect);
             List<String> originalResults = executeAndGetRows(s, originalQuery);
@@ -291,14 +281,11 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
 
         SQLConnection con = state.getConnection();
         try (Statement s = con.createStatement()) {
-            String foldedConstant;
-            try (ResultSet rs = s.executeQuery(auxiliaryQuery)) {
-                if (!rs.next()) {
-                    return;
-                }
-                String value = rs.getString(1);
-                foldedConstant = rs.wasNull() ? "NULL" : booleanLiteral(value);
+            String[] scalar = executeSingleScalar(s, auxiliaryQuery);
+            if (scalar == null) {
+                return;
             }
+            String foldedConstant = scalar[0] == null ? "NULL" : booleanLiteral(scalar[0]);
             existsBag.updateInnerExpression(constantFromValue(foldedConstant, GaussDBDataType.BOOLEAN));
             String foldedQuery = GaussDBToStringVisitor.asString(originalSelect);
             List<String> originalResults = executeAndGetRows(s, originalQuery);
@@ -335,12 +322,7 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
 
         SQLConnection con = state.getConnection();
         try (Statement s = con.createStatement()) {
-            List<String[]> auxiliaryRows = new ArrayList<>();
-            try (ResultSet rs = s.executeQuery(auxiliaryQuery)) {
-                while (rs.next()) {
-                    auxiliaryRows.add(new String[] { rs.getString(1), rs.getString(2) });
-                }
-            }
+            List<String[]> auxiliaryRows = executeTwoColumnRows(s, auxiliaryQuery);
             if (auxiliaryRows.isEmpty()) {
                 return;
             }
@@ -461,12 +443,7 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
 
         SQLConnection con = state.getConnection();
         try (Statement s = con.createStatement()) {
-            List<String[]> auxiliaryRows = new ArrayList<>();
-            try (ResultSet rs = s.executeQuery(auxiliaryQuery)) {
-                while (rs.next()) {
-                    auxiliaryRows.add(new String[] { rs.getString(1), rs.getString(2) });
-                }
-            }
+            List<String[]> auxiliaryRows = executeTwoColumnRows(s, auxiliaryQuery);
             if (auxiliaryRows.isEmpty()) {
                 return;
             }
@@ -577,14 +554,11 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
 
         SQLConnection con = state.getConnection();
         try (Statement s = con.createStatement()) {
-            String foldedConstant;
-            try (ResultSet rs = s.executeQuery(GaussDBToStringVisitor.asString(subquerySelect))) {
-                if (!rs.next()) {
-                    return;
-                }
-                String value = rs.getString(1);
-                foldedConstant = rs.wasNull() ? "NULL" : value;
+            String[] scalar = executeSingleScalar(s, GaussDBToStringVisitor.asString(subquerySelect));
+            if (scalar == null) {
+                return;
             }
+            String foldedConstant = scalar[0] == null ? "NULL" : scalar[0];
             subqueryBag.updateInnerExpression(constantFromValue(foldedConstant, leftColumn.getType()));
             String foldedQuery = GaussDBToStringVisitor.asString(originalSelect);
             List<String> originalResults = executeAndGetRows(s, originalQuery);
@@ -621,14 +595,11 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
 
         SQLConnection con = state.getConnection();
         try (Statement s = con.createStatement()) {
-            String foldedConstant;
-            try (ResultSet rs = s.executeQuery(GaussDBToStringVisitor.asString(subquerySelect))) {
-                if (!rs.next()) {
-                    return;
-                }
-                String value = rs.getString(1);
-                foldedConstant = rs.wasNull() ? "NULL" : value;
+            String[] scalar = executeSingleScalar(s, GaussDBToStringVisitor.asString(subquerySelect));
+            if (scalar == null) {
+                return;
             }
+            String foldedConstant = scalar[0] == null ? "NULL" : scalar[0];
             subqueryBag.updateInnerExpression(constantFromValue(foldedConstant, GaussDBDataType.INT));
             String foldedQuery = GaussDBToStringVisitor.asString(originalSelect);
             List<String> originalResults = executeAndGetRows(s, originalQuery);
@@ -678,8 +649,14 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
         return select;
     }
 
-    private GaussDBColumnReference ctidReference(String alias) {
-        return new GaussDBColumnReference(new GaussDBColumn("ctid", GaussDBDataType.TEXT), alias);
+    private GaussDBExpression ctidReference(String alias) {
+        GaussDBExpression tableoid = new GaussDBCastOperation(
+                new GaussDBColumnReference(new GaussDBColumn("tableoid", GaussDBDataType.INT), alias),
+                GaussDBDataType.TEXT);
+        GaussDBExpression ctid = new GaussDBCastOperation(
+                new GaussDBColumnReference(new GaussDBColumn("ctid", GaussDBDataType.TEXT), alias),
+                GaussDBDataType.TEXT);
+        return new GaussDBFunction("concat", Arrays.asList(tableoid, ctid), GaussDBDataType.TEXT);
     }
 
     private GaussDBSelect selectStarFromDerivedTable(String alias) {
@@ -747,10 +724,6 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
         return numericColumns.isEmpty() ? null : Randomly.fromList(numericColumns);
     }
 
-    private String quoteLiteral(String value) {
-        return "'" + value.replace("'", "''") + "'";
-    }
-
     private String booleanLiteral(String value) {
         String normalized = value.trim().toLowerCase(Locale.ROOT);
         switch (normalized) {
@@ -764,20 +737,6 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
         case "0":
         case "no":
             return "FALSE";
-        default:
-            return value;
-        }
-    }
-
-    private String sqlLiteral(String value, GaussDBDataType type) {
-        if (value == null) {
-            return "NULL";
-        }
-        switch (type) {
-        case TEXT:
-            return quoteLiteral(value);
-        case BOOLEAN:
-            return booleanLiteral(value);
         default:
             return value;
         }
@@ -829,6 +788,36 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
             throw e;
         }
         return results;
+    }
+
+    private String[] executeSingleScalar(Statement s, String query) throws SQLException {
+        try (ResultSet rs = s.executeQuery(query)) {
+            if (!rs.next()) {
+                return null;
+            }
+            String value = rs.getString(1);
+            return new String[] { rs.wasNull() ? null : value };
+        } catch (SQLException e) {
+            if (errors.errorIsExpected(e.getMessage())) {
+                throw new IgnoreMeException();
+            }
+            throw e;
+        }
+    }
+
+    private List<String[]> executeTwoColumnRows(Statement s, String query) throws SQLException {
+        List<String[]> rows = new ArrayList<>();
+        try (ResultSet rs = s.executeQuery(query)) {
+            while (rs.next()) {
+                rows.add(new String[] { rs.getString(1), rs.getString(2) });
+            }
+        } catch (SQLException e) {
+            if (errors.errorIsExpected(e.getMessage())) {
+                throw new IgnoreMeException();
+            }
+            throw e;
+        }
+        return rows;
     }
 
     private List<String> executeAndGetValues(Statement s, String query) throws SQLException {

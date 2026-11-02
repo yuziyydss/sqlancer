@@ -280,18 +280,18 @@ public class GaussDBDQPOracle implements TestOracle<GaussDBGlobalState> {
         SQLConnection connection = state.getConnection();
         try (Statement statement = connection.createStatement()) {
             try {
-                applyGucs(statement, RESET_GUCS);
+                applyGucs(statement, RESET_GUCS, errors);
                 List<String> baselineRows = executeAndGetRows(statement, bundle.getBaseQuery(), errors);
 
                 for (PlanVariant variant : bundle.getVariants()) {
-                    applyGucs(statement, RESET_GUCS);
-                    applyGucs(statement, variant.getGucSettings());
+                    applyGucs(statement, RESET_GUCS, errors);
+                    applyGucs(statement, variant.getGucSettings(), errors);
                     List<String> variantRows = executeAndGetRows(statement, variant.getSql(), errors);
                     if (!areEquivalent(baselineRows, variantRows)) {
                         // Re-run once to rule out nondeterministic expressions.
-                        applyGucs(statement, RESET_GUCS);
+                        applyGucs(statement, RESET_GUCS, errors);
                         List<String> retryBase = executeAndGetRows(statement, bundle.getBaseQuery(), errors);
-                        applyGucs(statement, variant.getGucSettings());
+                        applyGucs(statement, variant.getGucSettings(), errors);
                         List<String> retryVariant = executeAndGetRows(statement, variant.getSql(), errors);
                         if (!areEquivalent(retryBase, retryVariant)) {
                             reproducer = new GaussDBDQPReproducer(bundle.getBaseQuery(), variant);
@@ -308,9 +308,16 @@ public class GaussDBDQPOracle implements TestOracle<GaussDBGlobalState> {
         }
     }
 
-    static void applyGucs(Statement statement, List<String> gucs) throws SQLException {
+    static void applyGucs(Statement statement, List<String> gucs, ExpectedErrors errors) throws SQLException {
         if (!gucs.isEmpty()) {
-            statement.execute(String.join("; ", gucs));
+            try {
+                statement.execute(String.join("; ", gucs));
+            } catch (SQLException e) {
+                if (errors != null && errors.errorIsExpected(e.getMessage())) {
+                    throw new IgnoreMeException();
+                }
+                throw e;
+            }
         }
     }
 

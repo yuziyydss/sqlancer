@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 
 import com.google.auto.service.AutoService;
 
@@ -100,7 +101,7 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
         host = globalState.getOptions().getHost();
         port = globalState.getOptions().getPort();
         connectionURL = globalState.getDbmsSpecificOptions().connectionURL;
-        schemaName = "sqlancer_" + globalState.getDatabaseName();
+        schemaName = resolveSchemaSlotName(globalState.getDatabaseName());
 
         if (connectionURL.startsWith("jdbc:")) {
             connectionURL = connectionURL.substring(5);
@@ -134,6 +135,15 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
                 s.execute("CREATE SCHEMA " + schemaName);
                 s.execute("SET search_path TO " + schemaName);
             }
+            for (String sessionGuc : Arrays.asList("SET disable_gpc_store = on", "SET cursor_sharing = off",
+                    "SET spm_enable_plan_capture = off", "SET spm_enable_plan_history_logging = off",
+                    "SET instr_unique_sql_track_type = top")) {
+                try {
+                    s.execute(sessionGuc);
+                } catch (SQLException ignored) {
+                    // Best-effort session GUCs to prevent global plan/SPM/unique-SQL cache bloat during high-speed fuzzing.
+                }
+            }
         }
         return new SQLConnection(con);
     }
@@ -141,6 +151,15 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
     @Override
     public String getDBMSName() {
         return "gaussdb";
+    }
+
+    // Assigns each worker thread a dedicated schema slot so concurrent threads never collide and each thread's
+    // previous tables/partitions/indexes are dropped automatically when it rotates to the next database.
+    private static String resolveSchemaSlotName(String databaseName) {
+        if (databaseName != null && databaseName.endsWith("connectiontest")) {
+            return "sqlancer_conntest";
+        }
+        return "sqlancer_worker_" + Thread.currentThread().getId();
     }
 
     protected void createTables(GaussDBGlobalState globalState, int numTables) throws Exception {

@@ -50,7 +50,7 @@ class GaussDBEPSCOracleTest {
         assertEquals("SELECT * FROM t0 AS t WHERE ((((t.c0) = (42))) AND (((t.c1) = ('abc'))))",
                 plan.getOriginalQuery());
         assertEquals(
-                "PREPARE sqlancer_epsc_stmt(BIGINT, TEXT) AS "
+                "PREPARE sqlancer_epsc_stmt(INT, TEXT) AS "
                         + "SELECT * FROM t0 AS t WHERE ((((t.c0) = ($1))) AND (((t.c1) = ($2))))",
                 plan.getPrepareSql());
         assertEquals("EXECUTE sqlancer_epsc_stmt(42, 'abc')", plan.getExecuteSql());

@@ -17,6 +17,7 @@ public final class GaussDBErrors {
         errors.add("operator does not exist");
         errors.add("function does not exist");
         errors.add("invalid input syntax");
+        errors.add("The input syntax of type");
         errors.add("invalid regular expression");
         errors.add("negative substring length not allowed");
         errors.add("out of range");
@@ -25,6 +26,9 @@ public final class GaussDBErrors {
         errors.add("fail to update partitioned table");
         errors.add("inserted partition key does not map to any table partition");
         errors.add("updated partition key does not map to any table partition");
+        errors.add("invalid byte sequence for encoding");
+        errors.add("null character not permitted");
+        errors.add("memory is temporarily unavailable");
     }
 
     public static void addCommonFetchErrors(ExpectedErrors errors) {

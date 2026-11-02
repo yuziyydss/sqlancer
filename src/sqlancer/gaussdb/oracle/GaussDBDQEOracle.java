@@ -6,7 +6,9 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import sqlancer.IgnoreMeException;
 import sqlancer.Randomly;
@@ -40,6 +42,7 @@ public class GaussDBDQEOracle implements TestOracle<GaussDBGlobalState> {
 
     private final GaussDBGlobalState state;
     private final ExpectedErrors errors = new ExpectedErrors();
+    private final Set<String> initializedTables = new HashSet<>();
     private GaussDBDQEReproducer reproducer;
     private String lastQueryString;
 
@@ -106,7 +109,7 @@ public class GaussDBDQEOracle implements TestOracle<GaussDBGlobalState> {
         GaussDBColumn indexedCol = Randomly.getBoolean() ? Randomly.fromList(table.getColumns()) : null;
 
         DQEQueryPlan plan = createPlan(table, predicate, storageType, indexedCol);
-        verifyPlan(plan);
+        verifyPlan(table.getName(), plan);
     }
 
     static DQEQueryPlan createPlan(GaussDBTable table, GaussDBExpression predicate, String storageType,
@@ -137,24 +140,41 @@ public class GaussDBDQEOracle implements TestOracle<GaussDBGlobalState> {
         return new DQEQueryPlan(setup, selectSql, updateSql, selectUpdatedSql, deleteSql, cleanupSql);
     }
 
-    private void verifyPlan(DQEQueryPlan plan) throws SQLException {
+    private void verifyPlan(String baseTableName, DQEQueryPlan plan) throws SQLException {
         lastQueryString = plan.getSelectSql();
         SQLConnection connection = state.getConnection();
         try (Statement statement = connection.createStatement()) {
-            try {
-                if (runAndCheck(statement, plan)) {
-                    return;
+            if (!initializedTables.contains(baseTableName)) {
+                for (String sql : plan.getSetupSql()) {
+                    executeSetup(statement, sql, errors);
                 }
-                // Re-run once from a fresh snapshot to rule out nondeterministic predicates.
-                if (!runAndCheck(statement, plan)) {
-                    reproducer = new GaussDBDQEReproducer(plan);
-                    throw new AssertionError("DQE predicate mismatch across SELECT / UPDATE / DELETE\nSelect: "
-                            + plan.getSelectSql() + "\nUpdate: " + plan.getUpdateSql() + "\nDelete: "
-                            + plan.getDeleteSql());
-                }
-            } finally {
-                quietlyExecute(statement, plan.getCleanupSql());
+                initializedTables.add(baseTableName);
             }
+            if (runTransactionalCheck(statement, plan, errors)) {
+                return;
+            }
+            // Re-run once from a fresh snapshot to rule out nondeterministic predicates.
+            if (!runAndCheck(statement, plan)) {
+                reproducer = new GaussDBDQEReproducer(plan);
+                throw new AssertionError("DQE predicate mismatch across SELECT / UPDATE / DELETE\nSelect: "
+                        + plan.getSelectSql() + "\nUpdate: " + plan.getUpdateSql() + "\nDelete: "
+                        + plan.getDeleteSql());
+            }
+        }
+    }
+
+    private static boolean runTransactionalCheck(Statement statement, DQEQueryPlan plan, ExpectedErrors errors)
+            throws SQLException {
+        statement.execute("BEGIN");
+        try {
+            List<String> selectRows = executeAndGetRows(statement, plan.getSelectSql(), errors);
+            List<String> updateReturningRows = executeAndGetRows(statement, plan.getUpdateSql(), errors);
+            List<String> updatedRows = executeAndGetRows(statement, plan.getSelectUpdatedSql(), errors);
+            List<String> deleteReturningRows = executeAndGetRows(statement, plan.getDeleteSql(), errors);
+            return areEquivalent(selectRows, updateReturningRows) && areEquivalent(selectRows, updatedRows)
+                    && areEquivalent(selectRows, deleteReturningRows);
+        } finally {
+            quietlyExecute(statement, "ROLLBACK");
         }
     }
 
