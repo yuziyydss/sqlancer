@@ -1,5 +1,7 @@
 package sqlancer.gaussdb.ast;
 
+import sqlancer.gaussdb.GaussDBSchema.GaussDBDataType;
+
 public final class GaussDBInSubquery implements GaussDBExpression {
 
     private final GaussDBExpression expression;
@@ -22,6 +24,11 @@ public final class GaussDBInSubquery implements GaussDBExpression {
 
     public boolean isNegated() {
         return negated;
+    }
+
+    @Override
+    public GaussDBDataType getExpressionType() {
+        return GaussDBDataType.BOOLEAN;
     }
 
 }

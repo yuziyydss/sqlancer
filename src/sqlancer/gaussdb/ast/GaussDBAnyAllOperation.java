@@ -1,5 +1,7 @@
 package sqlancer.gaussdb.ast;
 
+import sqlancer.gaussdb.GaussDBSchema.GaussDBDataType;
+
 public final class GaussDBAnyAllOperation implements GaussDBExpression {
 
     public enum Quantifier {
@@ -37,6 +39,11 @@ public final class GaussDBAnyAllOperation implements GaussDBExpression {
 
     public Quantifier getQuantifier() {
         return quantifier;
+    }
+
+    @Override
+    public GaussDBDataType getExpressionType() {
+        return GaussDBDataType.BOOLEAN;
     }
 
 }

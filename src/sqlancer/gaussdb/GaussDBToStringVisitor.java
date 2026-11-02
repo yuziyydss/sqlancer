@@ -19,11 +19,15 @@ import sqlancer.gaussdb.ast.GaussDBInOperation;
 import sqlancer.gaussdb.ast.GaussDBInSubquery;
 import sqlancer.gaussdb.ast.GaussDBJoin;
 import sqlancer.gaussdb.ast.GaussDBSelect;
+import sqlancer.gaussdb.ast.GaussDBSetOperation;
 import sqlancer.gaussdb.ast.GaussDBStar;
 import sqlancer.gaussdb.ast.GaussDBSubquery;
 import sqlancer.gaussdb.ast.GaussDBTableReference;
 import sqlancer.gaussdb.ast.GaussDBValues;
+import sqlancer.gaussdb.ast.GaussDBWindowFrame;
+import sqlancer.gaussdb.ast.GaussDBWindowFunction;
 import sqlancer.gaussdb.ast.GaussDBWithClause;
+import sqlancer.gaussdb.ast.GaussDBWithClauseGroup;
 
 public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpression> implements GaussDBVisitor {
 
@@ -41,6 +45,8 @@ public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpress
             visit((GaussDBValues) expr);
         } else if (expr instanceof GaussDBWithClause) {
             visit((GaussDBWithClause) expr);
+        } else if (expr instanceof GaussDBWithClauseGroup) {
+            visit((GaussDBWithClauseGroup) expr);
         } else if (expr instanceof GaussDBJoin) {
             visit((GaussDBJoin) expr);
         } else if (expr instanceof GaussDBExists) {
@@ -71,6 +77,10 @@ public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpress
             visit((GaussDBAggregate) expr);
         } else if (expr instanceof GaussDBConstant) {
             visit((GaussDBConstant) expr);
+        } else if (expr instanceof GaussDBWindowFunction) {
+            visit((GaussDBWindowFunction) expr);
+        } else if (expr instanceof GaussDBSetOperation) {
+            visit((GaussDBSetOperation) expr);
         } else {
             throw new AssertionError(expr);
         }
@@ -116,7 +126,7 @@ public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpress
 
     public void visit(GaussDBSubquery subquery) {
         sb.append("(");
-        visit(subquery.getSelect());
+        visit(subquery.getExpression());
         sb.append(")");
     }
 
@@ -133,11 +143,26 @@ public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpress
     }
 
     public void visit(GaussDBWithClause withClause) {
-        sb.append("WITH ");
+        sb.append(withClause.isRecursive() ? "WITH RECURSIVE " : "WITH ");
         sb.append(withClause.getAlias());
         sb.append(" AS (");
         visit(withClause.getExpression());
         sb.append(") ");
+    }
+
+    public void visit(GaussDBWithClauseGroup withClauseGroup) {
+        sb.append("WITH ");
+        for (int i = 0; i < withClauseGroup.getClauses().size(); i++) {
+            if (i != 0) {
+                sb.append(", ");
+            }
+            GaussDBWithClause withClause = withClauseGroup.getClauses().get(i);
+            sb.append(withClause.getAlias());
+            sb.append(" AS (");
+            visit(withClause.getExpression());
+            sb.append(")");
+        }
+        sb.append(" ");
     }
 
     public void visit(GaussDBJoin join) {
@@ -214,7 +239,7 @@ public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpress
 
     public void visit(GaussDBSelect select) {
         if (select.getWithClause() != null) {
-            visit((GaussDBWithClause) select.getWithClause());
+            visit(select.getWithClause());
         }
         sb.append("SELECT ");
         if (select.isDistinct()) {
@@ -320,6 +345,71 @@ public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpress
         sb.append(aggregate.getFunction());
         sb.append("(");
         visit(aggregate.getArguments());
+        sb.append(")");
+    }
+
+    public void visit(GaussDBWindowFunction windowFunction) {
+        sb.append(windowFunction.getFunctionName());
+        sb.append("(");
+        if (windowFunction.getFilterClause() != null) {
+            sb.append("CASE WHEN ");
+            visit(windowFunction.getFilterClause());
+            sb.append(" THEN ");
+            if (windowFunction.getArguments().isEmpty()
+                    || windowFunction.getArguments().get(0) instanceof GaussDBStar) {
+                sb.append("1");
+            } else {
+                visit(windowFunction.getArguments());
+            }
+            sb.append(" END");
+        } else {
+            visit(windowFunction.getArguments());
+        }
+        sb.append(")");
+        sb.append(" OVER (");
+        if (!windowFunction.getPartitionBy().isEmpty()) {
+            sb.append("PARTITION BY ");
+            visit(windowFunction.getPartitionBy());
+        }
+        if (!windowFunction.getOrderBy().isEmpty()) {
+            if (!windowFunction.getPartitionBy().isEmpty()) {
+                sb.append(" ");
+            }
+            sb.append("ORDER BY ");
+            visit(windowFunction.getOrderBy());
+        }
+        if (windowFunction.getFrame() != null) {
+            if (!windowFunction.getPartitionBy().isEmpty() || !windowFunction.getOrderBy().isEmpty()) {
+                sb.append(" ");
+            }
+            visit(windowFunction.getFrame());
+        }
+        sb.append(")");
+    }
+
+    private void visit(GaussDBWindowFrame frame) {
+        sb.append(frame.getFrameType().getRepresentation());
+        sb.append(" BETWEEN ");
+        visit(frame.getStart());
+        sb.append(" AND ");
+        visit(frame.getEnd());
+    }
+
+    private void visit(GaussDBWindowFrame.Boundary boundary) {
+        if (boundary.getOffset() != null) {
+            visit(boundary.getOffset());
+            sb.append(" ");
+        }
+        sb.append(boundary.getKind().getRepresentation());
+    }
+
+    public void visit(GaussDBSetOperation setOperation) {
+        sb.append("(");
+        visit(setOperation.getLeft());
+        sb.append(") ");
+        sb.append(setOperation.getOperator().getRepresentation());
+        sb.append(" (");
+        visit(setOperation.getRight());
         sb.append(")");
     }
 

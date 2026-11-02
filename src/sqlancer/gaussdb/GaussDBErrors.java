@@ -9,6 +9,7 @@ public final class GaussDBErrors {
 
     public static void addCommonExpressionErrors(ExpectedErrors errors) {
         errors.addRegexString("(?i)division by zero");
+        errors.add("CASE types");
         errors.add("operator does not exist");
         errors.add("function does not exist");
         errors.add("invalid input syntax");
@@ -20,6 +21,7 @@ public final class GaussDBErrors {
     public static void addCommonFetchErrors(ExpectedErrors errors) {
         errors.add("canceling statement due to statement timeout");
         errors.add("current transaction is aborted");
+        errors.add("memory is temporarily unavailable");
     }
 
 }

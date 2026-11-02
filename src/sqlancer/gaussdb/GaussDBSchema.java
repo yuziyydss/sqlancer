@@ -34,11 +34,11 @@ public class GaussDBSchema extends AbstractSchema<GaussDBGlobalState, GaussDBTab
     public static GaussDBSchema fromConnection(SQLConnection con, String databaseName) throws SQLException {
         List<GaussDBTable> databaseTables = new ArrayList<>();
         try (Statement s = con.createStatement()) {
-            try (ResultSet rs = s.executeQuery("SELECT table_name FROM information_schema.tables "
+            try (ResultSet rs = s.executeQuery("SELECT table_name, table_type FROM information_schema.tables "
                     + "WHERE table_schema = current_schema() AND table_type IN ('BASE TABLE', 'VIEW') ORDER BY table_name;")) {
                 while (rs.next()) {
                     String tableName = rs.getString("table_name");
-                    boolean isView = tableName.startsWith("v");
+                    boolean isView = isViewTableType(rs.getString("table_type"));
                     List<GaussDBColumn> columns = getTableColumns(con, tableName);
                     List<GaussDBIndex> indexes = getIndexes(con, tableName);
                     GaussDBTable table = new GaussDBTable(tableName, columns, indexes, isView, !isView);
@@ -50,6 +50,12 @@ public class GaussDBSchema extends AbstractSchema<GaussDBGlobalState, GaussDBTab
             }
         }
         return new GaussDBSchema(databaseTables, databaseName);
+    }
+
+    // Determines whether a relation is a view based on information_schema.tables.table_type instead of relying on
+    // naming conventions (a base table could also start with "v").
+    static boolean isViewTableType(String tableType) {
+        return tableType != null && "VIEW".equalsIgnoreCase(tableType.trim());
     }
 
     private static List<GaussDBColumn> getTableColumns(SQLConnection con, String tableName) throws SQLException {
