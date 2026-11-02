@@ -23,21 +23,21 @@ public final class GaussDBSetOperation implements GaussDBExpression {
         }
     }
 
-    private final GaussDBSelect left;
-    private final GaussDBSelect right;
+    private final GaussDBExpression left;
+    private final GaussDBExpression right;
     private final Operator operator;
 
-    public GaussDBSetOperation(GaussDBSelect left, GaussDBSelect right, Operator operator) {
+    public GaussDBSetOperation(GaussDBExpression left, GaussDBExpression right, Operator operator) {
         this.left = left;
         this.right = right;
         this.operator = operator;
     }
 
-    public GaussDBSelect getLeft() {
+    public GaussDBExpression getLeft() {
         return left;
     }
 
-    public GaussDBSelect getRight() {
+    public GaussDBExpression getRight() {
         return right;
     }
 

@@ -8,7 +8,8 @@ public final class GaussDBUnaryOperation implements UnaryOperation<GaussDBExpres
 
     public enum Operator {
         NOT("NOT", OperatorKind.PREFIX), NEGATE("-", OperatorKind.PREFIX), IS_NULL("IS NULL",
-                OperatorKind.POSTFIX), IS_NOT_NULL("IS NOT NULL", OperatorKind.POSTFIX);
+                OperatorKind.POSTFIX), IS_NOT_NULL("IS NOT NULL", OperatorKind.POSTFIX), IS_TRUE("IS TRUE",
+                        OperatorKind.POSTFIX), IS_FALSE("IS FALSE", OperatorKind.POSTFIX);
 
         private final String representation;
         private final OperatorKind kind;
