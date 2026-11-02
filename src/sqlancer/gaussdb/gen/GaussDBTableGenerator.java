@@ -40,6 +40,11 @@ public class GaussDBTableGenerator {
             createColumn(DBMSCommon.createColumnName(i));
         }
         sb.append(")");
+        if (Randomly.getBoolean()) {
+            sb.append(" WITH (storage_type = ");
+            sb.append(Randomly.fromOptions("astore", "ustore"));
+            sb.append(")");
+        }
         return new SQLQueryAdapter(sb.toString(), errors, true);
     }
 
