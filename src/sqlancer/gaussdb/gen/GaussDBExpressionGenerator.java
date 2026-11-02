@@ -312,7 +312,7 @@ public final class GaussDBExpressionGenerator
     }
 
     private GaussDBExpression generateComparison(int depth) {
-        GaussDBDataType type = getRandomType();
+        GaussDBDataType type = getComparisonOperandType();
         GaussDBExpression left = generateExpression(type, depth + 1);
         GaussDBExpression right = generateExpression(type, depth + 1);
         return new GaussDBBinaryOperation(left, right, Operator.getRandomComparison(), GaussDBDataType.BOOLEAN);
@@ -325,24 +325,34 @@ public final class GaussDBExpressionGenerator
     }
 
     private GaussDBExpression generateNullCheck(int depth) {
-        GaussDBDataType type = getRandomType();
+        GaussDBDataType type = getComparisonOperandType();
         return new GaussDBUnaryOperation(generateExpression(type, depth + 1),
                 GaussDBUnaryOperation.Operator.getRandomNullCheck(), GaussDBDataType.BOOLEAN);
     }
 
     private GaussDBExpression generateInOperation(int depth) {
-        GaussDBDataType type = getRandomType();
+        GaussDBDataType type = getComparisonOperandType();
         GaussDBExpression expression = generateExpression(type, depth + 1);
         List<GaussDBExpression> list = generateExpressions(type, Randomly.smallNumber() + 1, depth + 1);
         return new GaussDBInOperation(expression, list, Randomly.getBoolean());
     }
 
     private GaussDBExpression generateBetweenOperation(int depth) {
-        GaussDBDataType type = getRandomType();
+        GaussDBDataType type = getComparisonOperandType();
         GaussDBExpression expression = generateExpression(type, depth + 1);
         GaussDBExpression left = generateExpression(type, depth + 1);
         GaussDBExpression right = generateExpression(type, depth + 1);
         return new GaussDBBetweenOperation(expression, left, right, Randomly.getBoolean(), Randomly.getBoolean());
+    }
+
+    private GaussDBDataType getComparisonOperandType() {
+        GaussDBDataType type = getRandomType();
+        if (type == GaussDBDataType.BOOLEAN && globalState.getDbmsSpecificOptions() != null
+                && globalState.getDbmsSpecificOptions().bypassBooleanTestRangeBug) {
+            return Randomly.fromOptions(GaussDBDataType.INT, GaussDBDataType.DECIMAL, GaussDBDataType.TEXT,
+                    GaussDBDataType.DATE, GaussDBDataType.TIMESTAMP);
+        }
+        return type;
     }
 
     private GaussDBExpression generateArithmeticOperation(GaussDBDataType type, int depth) {

@@ -137,7 +137,8 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
             }
             for (String sessionGuc : Arrays.asList("SET disable_gpc_store = on", "SET cursor_sharing = off",
                     "SET spm_enable_plan_capture = off", "SET spm_enable_plan_history_logging = off",
-                    "SET instr_unique_sql_track_type = top")) {
+                    "SET instr_unique_sql_track_type = top", "SELECT reset_unique_sql('GLOBAL', 'ALL', 0)",
+                    "SELECT plancache_clean()")) {
                 try {
                     s.execute(sessionGuc);
                 } catch (SQLException ignored) {

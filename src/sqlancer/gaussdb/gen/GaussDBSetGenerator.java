@@ -39,8 +39,15 @@ public final class GaussDBSetGenerator {
             if (Randomly.getBooleanWithSmallProbability()) {
                 sql = "SET rewrite_rule = 'none'";
             } else {
-                List<String> rules = Randomly.nonEmptySubset(REWRITE_RULES);
-                sql = "SET rewrite_rule = '" + rules.stream().collect(Collectors.joining(",")) + "'";
+                boolean bypassKnownBugs = globalState.getDbmsSpecificOptions() == null
+                        || globalState.getDbmsSpecificOptions().bypassBooleanTestRangeBug;
+                List<String> rules = Randomly.nonEmptySubset(REWRITE_RULES).stream()
+                        .filter(r -> !bypassKnownBugs || !"cse_rewrite_opt".equals(r)).collect(Collectors.toList());
+                if (rules.isEmpty()) {
+                    sql = "SET rewrite_rule = 'none'";
+                } else {
+                    sql = "SET rewrite_rule = '" + rules.stream().collect(Collectors.joining(",")) + "'";
+                }
             }
             break;
         default:

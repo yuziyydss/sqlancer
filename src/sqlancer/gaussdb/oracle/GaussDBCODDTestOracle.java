@@ -682,7 +682,8 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
     }
 
     private GaussDBConstant constantFromValue(String value, GaussDBDataType type) {
-        if (value == null) {
+        if (value == null || "NULL".equalsIgnoreCase(value) || "NaN".equalsIgnoreCase(value)
+                || "Infinity".equalsIgnoreCase(value) || "-Infinity".equalsIgnoreCase(value)) {
             return GaussDBConstant.createNullConstant();
         }
         switch (type) {
