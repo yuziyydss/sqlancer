@@ -14,6 +14,7 @@ import sqlancer.gaussdb.ast.GaussDBConstant;
 import sqlancer.gaussdb.ast.GaussDBExpression;
 import sqlancer.gaussdb.ast.GaussDBFunction;
 import sqlancer.gaussdb.ast.GaussDBInOperation;
+import sqlancer.gaussdb.ast.GaussDBOrderByTerm;
 import sqlancer.gaussdb.ast.GaussDBUnaryOperation;
 import sqlancer.gaussdb.gen.GaussDBExpressionGenerator;
 
@@ -64,6 +65,11 @@ public final class GaussDBEETTransformer {
     // Applies a random applicable EET rule either to the root expression or to a randomly selected sub-expression.
     public static GaussDBExpression transform(GaussDBExpression expression, GaussDBExpression condition,
             Randomly randomly) {
+        if (expression instanceof GaussDBOrderByTerm) {
+            GaussDBOrderByTerm term = (GaussDBOrderByTerm) expression;
+            return new GaussDBOrderByTerm(transform(term.getExpression(), condition, randomly), term.getOrder(),
+                    term.getNullsOrder());
+        }
         if (Randomly.getBoolean()) {
             return applyRandomRule(expression, condition, randomly);
         }

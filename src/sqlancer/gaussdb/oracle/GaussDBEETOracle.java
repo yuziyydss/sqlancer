@@ -822,15 +822,17 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
 
     private void checkOrderByExpression(GaussDBTable table, GaussDBExpressionGenerator generator) throws SQLException {
         GaussDBColumn column = Randomly.fromList(table.getColumns());
-        GaussDBExpression expression = new GaussDBColumnReference(column, TABLE_ALIAS);
+        GaussDBExpression baseExpr = new GaussDBColumnReference(column, TABLE_ALIAS);
+        GaussDBExpression expression = Randomly.getBoolean() ? generator.generateOrderByTerm(baseExpr) : baseExpr;
         GaussDBExpression condition = generator.generateExpression(GaussDBDataType.BOOLEAN);
+        GaussDBExpression tableoid = tableoidReference(TABLE_ALIAS);
         GaussDBExpression ctid = ctidReference(TABLE_ALIAS);
 
         GaussDBSelect originalSelect = selectStarWhere(table, GaussDBConstant.createBooleanConstant(true));
-        originalSelect.setOrderByClauses(Arrays.asList(expression, ctid));
+        originalSelect.setOrderByClauses(Arrays.asList(expression, tableoid, ctid));
 
         GaussDBSelect transformedSelect = selectStarWhere(table, GaussDBConstant.createBooleanConstant(true));
-        transformedSelect.setOrderByClauses(Arrays.asList(transform(expression, condition), ctid));
+        transformedSelect.setOrderByClauses(Arrays.asList(transform(expression, condition), tableoid, ctid));
 
         String originalQuery = GaussDBToStringVisitor.asString(originalSelect);
         String transformedQuery = GaussDBToStringVisitor.asString(transformedSelect);
@@ -844,6 +846,7 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
         GaussDBExpression secondExpression = new GaussDBColumnReference(secondColumn, TABLE_ALIAS);
         GaussDBExpression firstCondition = generator.generateExpression(GaussDBDataType.BOOLEAN);
         GaussDBExpression secondCondition = generator.generateExpression(GaussDBDataType.BOOLEAN);
+        GaussDBExpression tableoid = tableoidReference(TABLE_ALIAS);
         GaussDBExpression ctid = ctidReference(TABLE_ALIAS);
 
         boolean transformFirst = Randomly.getBoolean();
@@ -858,10 +861,10 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
                 : secondExpression;
 
         GaussDBSelect originalSelect = selectStarWhere(table, GaussDBConstant.createBooleanConstant(true));
-        originalSelect.setOrderByClauses(Arrays.asList(firstExpression, secondExpression, ctid));
+        originalSelect.setOrderByClauses(Arrays.asList(firstExpression, secondExpression, tableoid, ctid));
 
         GaussDBSelect transformedSelect = selectStarWhere(table, GaussDBConstant.createBooleanConstant(true));
-        transformedSelect.setOrderByClauses(Arrays.asList(transformedFirst, transformedSecond, ctid));
+        transformedSelect.setOrderByClauses(Arrays.asList(transformedFirst, transformedSecond, tableoid, ctid));
 
         String originalQuery = GaussDBToStringVisitor.asString(originalSelect);
         String transformedQuery = GaussDBToStringVisitor.asString(transformedSelect);
@@ -900,14 +903,15 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
     private void checkLimitExpression(GaussDBTable table) throws SQLException {
         GaussDBExpression condition = GaussDBConstant.createBooleanConstant(false);
         GaussDBExpression limit = GaussDBConstant.createIntConstant(1);
+        GaussDBExpression tableoid = tableoidReference(TABLE_ALIAS);
         GaussDBExpression ctid = ctidReference(TABLE_ALIAS);
 
         GaussDBSelect originalSelect = selectStarWhere(table, GaussDBConstant.createBooleanConstant(true));
-        originalSelect.setOrderByClauses(Collections.singletonList(ctid));
+        originalSelect.setOrderByClauses(Arrays.asList(tableoid, ctid));
         originalSelect.setLimitClause(limit);
 
         GaussDBSelect transformedSelect = selectStarWhere(table, GaussDBConstant.createBooleanConstant(true));
-        transformedSelect.setOrderByClauses(Collections.singletonList(ctid));
+        transformedSelect.setOrderByClauses(Arrays.asList(tableoid, ctid));
         transformedSelect.setLimitClause(equivalentExpression(limit, condition));
 
         String originalQuery = GaussDBToStringVisitor.asString(originalSelect);
@@ -918,15 +922,16 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
     private void checkOffsetExpression(GaussDBTable table) throws SQLException {
         GaussDBExpression condition = GaussDBConstant.createBooleanConstant(false);
         GaussDBExpression offset = GaussDBConstant.createIntConstant(1);
+        GaussDBExpression tableoid = tableoidReference(TABLE_ALIAS);
         GaussDBExpression ctid = ctidReference(TABLE_ALIAS);
 
         GaussDBSelect originalSelect = selectStarWhere(table, GaussDBConstant.createBooleanConstant(true));
-        originalSelect.setOrderByClauses(Collections.singletonList(ctid));
+        originalSelect.setOrderByClauses(Arrays.asList(tableoid, ctid));
         originalSelect.setLimitClause(GaussDBConstant.createIntConstant(1000));
         originalSelect.setOffsetClause(offset);
 
         GaussDBSelect transformedSelect = selectStarWhere(table, GaussDBConstant.createBooleanConstant(true));
-        transformedSelect.setOrderByClauses(Collections.singletonList(ctid));
+        transformedSelect.setOrderByClauses(Arrays.asList(tableoid, ctid));
         transformedSelect.setLimitClause(GaussDBConstant.createIntConstant(1000));
         transformedSelect.setOffsetClause(equivalentExpression(offset, condition));
 
@@ -947,7 +952,7 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
         innerSelect.setWhereClause(new GaussDBBinaryOperation(new GaussDBColumnReference(column, "i"),
                 new GaussDBColumnReference(column, TABLE_ALIAS), GaussDBBinaryOperation.Operator.EQUALS,
                 GaussDBDataType.BOOLEAN));
-        innerSelect.setOrderByClauses(Collections.singletonList(ctidReference("i")));
+        innerSelect.setOrderByClauses(Arrays.asList(tableoidReference("i"), ctidReference("i")));
         innerSelect.setLimitClause(GaussDBConstant.createIntConstant(1));
 
         GaussDBExpression subquery = new GaussDBSubquery(innerSelect);
@@ -1066,6 +1071,10 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
             GaussDBExpression condition) {
         return joinType == GaussDBJoin.JoinType.FULL ? equivalentFullJoinPredicate(predicate, condition)
                 : transform(predicate, condition);
+    }
+
+    private static GaussDBColumnReference tableoidReference(String alias) {
+        return new GaussDBColumnReference(new GaussDBColumn("tableoid", GaussDBDataType.INT), alias);
     }
 
     private static GaussDBColumnReference ctidReference(String alias) {

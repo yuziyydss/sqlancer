@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import sqlancer.OracleFactory;
 import sqlancer.common.oracle.TestOracle;
 import sqlancer.gaussdb.oracle.GaussDBCODDTestOracle;
+import sqlancer.gaussdb.oracle.GaussDBDQEOracle;
 import sqlancer.gaussdb.oracle.GaussDBEETOracle;
 import sqlancer.gaussdb.oracle.GaussDBEPSCOracle;
 import sqlancer.gaussdb.oracle.GaussDBThanosOracle;
@@ -41,6 +42,13 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBThanosOracle(globalState);
+        }
+    },
+
+    DQE {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBDQEOracle(globalState);
         }
     }
 

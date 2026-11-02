@@ -18,6 +18,7 @@ import sqlancer.gaussdb.ast.GaussDBFunction;
 import sqlancer.gaussdb.ast.GaussDBInOperation;
 import sqlancer.gaussdb.ast.GaussDBInSubquery;
 import sqlancer.gaussdb.ast.GaussDBJoin;
+import sqlancer.gaussdb.ast.GaussDBOrderByTerm;
 import sqlancer.gaussdb.ast.GaussDBSelect;
 import sqlancer.gaussdb.ast.GaussDBSetOperation;
 import sqlancer.gaussdb.ast.GaussDBStar;
@@ -81,6 +82,8 @@ public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpress
             visit((GaussDBWindowFunction) expr);
         } else if (expr instanceof GaussDBSetOperation) {
             visit((GaussDBSetOperation) expr);
+        } else if (expr instanceof GaussDBOrderByTerm) {
+            visit((GaussDBOrderByTerm) expr);
         } else {
             throw new AssertionError(expr);
         }
@@ -411,6 +414,19 @@ public final class GaussDBToStringVisitor extends ToStringVisitor<GaussDBExpress
         sb.append(" (");
         visit(setOperation.getRight());
         sb.append(")");
+    }
+
+    public void visit(GaussDBOrderByTerm orderByTerm) {
+        visit(orderByTerm.getExpression());
+        if (orderByTerm.getOrder() != null) {
+            sb.append(" ");
+            sb.append(orderByTerm.getOrder().getRepresentation());
+        }
+        if (orderByTerm.getNullsOrder() != null
+                && orderByTerm.getNullsOrder() != GaussDBOrderByTerm.NullsOrder.NONE) {
+            sb.append(" ");
+            sb.append(orderByTerm.getNullsOrder().getRepresentation());
+        }
     }
 
     private void appendType(GaussDBDataType type) {

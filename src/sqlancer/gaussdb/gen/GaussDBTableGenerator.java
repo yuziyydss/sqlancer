@@ -45,7 +45,33 @@ public class GaussDBTableGenerator {
             sb.append(Randomly.fromOptions("astore", "ustore"));
             sb.append(")");
         }
+        appendOptionalPartitionClause();
         return new SQLQueryAdapter(sb.toString(), errors, true);
+    }
+
+    private void appendOptionalPartitionClause() {
+        if (!Randomly.getBooleanWithSmallProbability()) {
+            return;
+        }
+        List<GaussDBColumn> intColumns = new ArrayList<>();
+        for (GaussDBColumn column : columnsToBeAdded) {
+            if (column.getType() == GaussDBDataType.INT) {
+                intColumns.add(column);
+            }
+        }
+        if (intColumns.isEmpty()) {
+            return;
+        }
+        GaussDBColumn partCol = Randomly.fromList(intColumns);
+        if (Randomly.getBoolean()) {
+            sb.append(" PARTITION BY RANGE (").append(partCol.getName()).append(") (")
+                    .append("PARTITION p0 VALUES LESS THAN (-100), ")
+                    .append("PARTITION p1 VALUES LESS THAN (200), ")
+                    .append("PARTITION pmax VALUES LESS THAN (MAXVALUE)) ENABLE ROW MOVEMENT");
+        } else {
+            sb.append(" PARTITION BY HASH (").append(partCol.getName()).append(") (")
+                    .append("PARTITION p0, PARTITION p1, PARTITION p2) ENABLE ROW MOVEMENT");
+        }
     }
 
     private void createColumn(String name) {

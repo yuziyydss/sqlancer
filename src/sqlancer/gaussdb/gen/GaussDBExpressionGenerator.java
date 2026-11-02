@@ -26,6 +26,7 @@ import sqlancer.gaussdb.ast.GaussDBExpression;
 import sqlancer.gaussdb.ast.GaussDBExtractOperation;
 import sqlancer.gaussdb.ast.GaussDBFunction;
 import sqlancer.gaussdb.ast.GaussDBInOperation;
+import sqlancer.gaussdb.ast.GaussDBOrderByTerm;
 import sqlancer.gaussdb.ast.GaussDBUnaryOperation;
 
 public final class GaussDBExpressionGenerator
@@ -60,7 +61,7 @@ public final class GaussDBExpressionGenerator
         case REAL:
             return generateNumericExpression(type, depth);
         case TEXT:
-            return generateLeafNode(type);
+            return generateTextExpression(depth);
         case DATE:
         case TIMESTAMP:
         case TIMESTAMPTZ:
@@ -105,15 +106,47 @@ public final class GaussDBExpressionGenerator
         }
     }
 
+    private GaussDBExpression generateTextExpression(int depth) {
+        switch (Randomly.fromOptions(0, 1, 2, 3)) {
+        case 0:
+            return generateLeafNode(GaussDBDataType.TEXT);
+        case 1:
+            return generateFunction(GaussDBDataType.TEXT, depth);
+        case 2:
+            return generateCaseOperation(GaussDBDataType.TEXT, depth);
+        case 3:
+            return new GaussDBCastOperation(generateExpression(getRandomNumericType(), depth + 1),
+                    GaussDBDataType.TEXT);
+        default:
+            throw new AssertionError("Unsupported text expression");
+        }
+    }
+
     private GaussDBExpression generateFunction(GaussDBDataType type, int depth) {
+        if (Randomly.getBooleanWithSmallProbability()) {
+            return generatePolymorphicFunction(type, depth);
+        }
         switch (type) {
         case INT:
-            if (Randomly.getBoolean()) {
+            switch (Randomly.fromOptions(0, 1, 2, 3, 4)) {
+            case 0:
                 return new GaussDBFunction("abs", List.of(generateExpression(type, depth + 1)), type);
+            case 1:
+                return new GaussDBFunction("length", List.of(generateExpression(GaussDBDataType.TEXT, depth + 1)), type);
+            case 2:
+                return new GaussDBFunction("strpos",
+                        List.of(generateExpression(GaussDBDataType.TEXT, depth + 1),
+                                generateExpression(GaussDBDataType.TEXT, depth + 1)),
+                        type);
+            case 3:
+                return new GaussDBFunction("ascii", List.of(generateExpression(GaussDBDataType.TEXT, depth + 1)), type);
+            case 4:
+                return new GaussDBFunction("sign", List.of(generateExpression(type, depth + 1)), type);
+            default:
+                throw new AssertionError("Unsupported int function");
             }
-            return new GaussDBFunction("length", List.of(generateExpression(GaussDBDataType.TEXT, depth + 1)), type);
         case TEXT:
-            switch (Randomly.fromOptions(0, 1, 2, 3)) {
+            switch (Randomly.fromOptions(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)) {
             case 0:
                 return new GaussDBFunction("lower", List.of(generateExpression(type, depth + 1)), type);
             case 1:
@@ -123,12 +156,34 @@ public final class GaussDBExpressionGenerator
             case 3:
                 return new GaussDBFunction("concat",
                         List.of(generateExpression(type, depth + 1), generateExpression(type, depth + 1)), type);
+            case 4:
+                return new GaussDBFunction("ltrim", List.of(generateExpression(type, depth + 1)), type);
+            case 5:
+                return new GaussDBFunction("rtrim", List.of(generateExpression(type, depth + 1)), type);
+            case 6:
+                return new GaussDBFunction("reverse", List.of(generateExpression(type, depth + 1)), type);
+            case 7:
+                return new GaussDBFunction("replace",
+                        List.of(generateExpression(type, depth + 1), generateExpression(type, depth + 1),
+                                generateExpression(type, depth + 1)),
+                        type);
+            case 8:
+                return new GaussDBFunction("substr",
+                        List.of(generateExpression(type, depth + 1),
+                                GaussDBConstant.createIntConstant(globalState.getRandomly().getInteger(1, 5)),
+                                GaussDBConstant.createIntConstant(globalState.getRandomly().getInteger(1, 5))),
+                        type);
+            case 9:
+                return new GaussDBFunction("regexp_replace",
+                        List.of(generateExpression(type, depth + 1),
+                                GaussDBConstant.createTextConstant("[a-zA-Z0-9]+"),
+                                generateExpression(type, depth + 1)),
+                        type);
             default:
                 throw new AssertionError("Unsupported text function");
             }
         case BOOLEAN:
-            return new GaussDBFunction("coalesce",
-                    List.of(generateExpression(type, depth + 1), generateExpression(type, depth + 1)), type);
+            return generatePolymorphicFunction(type, depth);
         case DECIMAL:
         case FLOAT:
         case REAL:
@@ -144,7 +199,8 @@ public final class GaussDBExpressionGenerator
                                 generateExpression(temporalType, depth + 1)),
                         GaussDBDataType.DECIMAL);
             }
-            return new GaussDBFunction("abs", List.of(generateExpression(type, depth + 1)), type);
+            String numericFunc = Randomly.fromOptions("abs", "ceil", "floor", "round", "trunc");
+            return new GaussDBFunction(numericFunc, List.of(generateExpression(type, depth + 1)), type);
         case DATE:
         case TIMESTAMP:
         case TIMESTAMPTZ:
@@ -154,6 +210,12 @@ public final class GaussDBExpressionGenerator
         default:
             throw new AssertionError(type);
         }
+    }
+
+    private GaussDBExpression generatePolymorphicFunction(GaussDBDataType type, int depth) {
+        String fn = Randomly.fromOptions("coalesce", "nvl", "nullif", "greatest", "least");
+        return new GaussDBFunction(fn,
+                List.of(generateExpression(type, depth + 1), generateExpression(type, depth + 1)), type);
     }
 
     private GaussDBExpression generateTemporalExpression(GaussDBDataType type, int depth) {
@@ -290,8 +352,15 @@ public final class GaussDBExpressionGenerator
     }
 
     private GaussDBExpression generateCastOperation(GaussDBDataType type, int depth) {
-        GaussDBDataType sourceType = getRandomNumericType();
+        GaussDBDataType sourceType = Randomly.getBooleanWithSmallProbability()
+                ? Randomly.fromOptions(GaussDBDataType.BOOLEAN, GaussDBDataType.TEXT)
+                : getRandomNumericType();
         return new GaussDBCastOperation(generateExpression(sourceType, depth + 1), type);
+    }
+
+    public GaussDBOrderByTerm generateOrderByTerm(GaussDBExpression expression) {
+        return new GaussDBOrderByTerm(expression, GaussDBOrderByTerm.Order.getRandom(),
+                GaussDBOrderByTerm.NullsOrder.getRandom());
     }
 
     private GaussDBExpression generateCaseOperation(GaussDBDataType type, int depth) {
@@ -364,7 +433,7 @@ public final class GaussDBExpressionGenerator
         case INT:
             return GaussDBConstant.createIntConstant(r.getInteger(-1000, 1000));
         case BOOLEAN:
-            return GaussDBConstant.createBooleanConstant(r.getBoolean());
+            return GaussDBConstant.createBooleanConstant(Randomly.getBoolean());
         case TEXT:
             return GaussDBConstant.createTextConstant(r.getString());
         case DECIMAL:

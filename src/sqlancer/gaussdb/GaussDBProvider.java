@@ -24,6 +24,7 @@ import sqlancer.gaussdb.gen.GaussDBDeleteGenerator;
 import sqlancer.gaussdb.gen.GaussDBIndexGenerator;
 import sqlancer.gaussdb.gen.GaussDBInsertGenerator;
 import sqlancer.gaussdb.gen.GaussDBInsertSelectGenerator;
+import sqlancer.gaussdb.gen.GaussDBSetGenerator;
 import sqlancer.gaussdb.gen.GaussDBTableGenerator;
 import sqlancer.gaussdb.gen.GaussDBUpdateGenerator;
 import sqlancer.gaussdb.gen.GaussDBViewGenerator;
@@ -49,7 +50,8 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
         UPDATE(GaussDBUpdateGenerator::update),
         DELETE(GaussDBDeleteGenerator::delete),
         CREATE_INDEX(GaussDBIndexGenerator::generate),
-        CREATE_VIEW(GaussDBViewGenerator::create);
+        CREATE_VIEW(GaussDBViewGenerator::create),
+        SET(GaussDBSetGenerator::set);
 
         private final SQLQueryProvider<GaussDBGlobalState> sqlQueryProvider;
 
@@ -78,6 +80,8 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
             return r.getInteger(0, 2);
         case CREATE_VIEW:
             return r.getInteger(0, 2);
+        case SET:
+            return r.getInteger(0, 3);
         default:
             throw new AssertionError(a);
         }

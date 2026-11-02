@@ -35,6 +35,7 @@ import sqlancer.gaussdb.ast.GaussDBExpressionBag;
 import sqlancer.gaussdb.ast.GaussDBFunction;
 import sqlancer.gaussdb.ast.GaussDBInOperation;
 import sqlancer.gaussdb.ast.GaussDBJoin;
+import sqlancer.gaussdb.ast.GaussDBOrderByTerm;
 import sqlancer.gaussdb.ast.GaussDBSelect;
 import sqlancer.gaussdb.ast.GaussDBSetOperation;
 import sqlancer.gaussdb.ast.GaussDBStar;
@@ -345,17 +346,21 @@ public class GaussDBEPSCOracle implements TestOracle<GaussDBGlobalState> {
                     op.getExpressionType());
         } else if (expression instanceof GaussDBFunction) {
             GaussDBFunction op = (GaussDBFunction) expression;
-            // Keep date_part's first argument ('day', 'hour', ...) as a literal when preferred, though GaussDB also
-            // accepts a TEXT parameter; parameterizing all arguments is valid SQL.
             List<GaussDBExpression> args = new ArrayList<>(op.getArguments().size());
             for (int i = 0; i < op.getArguments().size(); i++) {
-                if (i == 0 && "date_part".equalsIgnoreCase(op.getFunctionName())) {
+                if ((i == 0 && ("date_part".equalsIgnoreCase(op.getFunctionName())
+                        || "date_trunc".equalsIgnoreCase(op.getFunctionName())))
+                        || (i == 1 && "to_date".equalsIgnoreCase(op.getFunctionName()))) {
                     args.add(op.getArguments().get(i));
                 } else {
                     args.add(parameterizeConstants(op.getArguments().get(i), parameters));
                 }
             }
             return new GaussDBFunction(op.getFunctionName(), args, op.getExpressionType());
+        } else if (expression instanceof GaussDBOrderByTerm) {
+            GaussDBOrderByTerm term = (GaussDBOrderByTerm) expression;
+            return new GaussDBOrderByTerm(parameterizeConstants(term.getExpression(), parameters), term.getOrder(),
+                    term.getNullsOrder());
         } else if (expression instanceof GaussDBBetweenOperation) {
             GaussDBBetweenOperation op = (GaussDBBetweenOperation) expression;
             return new GaussDBBetweenOperation(parameterizeConstants(op.getExpression(), parameters),
