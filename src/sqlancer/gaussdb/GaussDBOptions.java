@@ -27,6 +27,9 @@ public class GaussDBOptions implements DBMSSpecificOptions<GaussDBOracleFactory>
     @Parameter(names = "--max-num-tables", description = "The maximum number of tables that can be created")
     public int maxNumTables = 4;
 
+    @Parameter(names = "--bypass-boolean-test-range-bug", description = "Bypass known GaussDB BooleanTest (IS FALSE) range-flattening bug in TLP by conjoining IS NOT NULL", arity = 1)
+    public boolean bypassBooleanTestRangeBug = true;
+
     @Override
     public List<GaussDBOracleFactory> getTestOracleFactory() {
         return oracle;

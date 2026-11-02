@@ -59,7 +59,7 @@ public final class GaussDBEETReproducer implements Reproducer<GaussDBGlobalState
                 int columnCount = resultSet.getMetaData().getColumnCount();
                 List<String> row = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
-                    row.add(resultSet.getString(i));
+                    row.add(GaussDBEETOracle.normalizeCellValue(resultSet.getString(i)));
                 }
                 results.add(row.toString());
             }

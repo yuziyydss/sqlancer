@@ -84,26 +84,28 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
         generator.setColumns(table.getColumns());
         generator.setTableAlias(TABLE_ALIAS);
 
+        boolean bypassBug = state.getDbmsSpecificOptions() == null
+                || state.getDbmsSpecificOptions().bypassBooleanTestRangeBug;
         TLPQueryPair pair;
         switch (Randomly.fromOptions(0, 1, 2, 3, 4, 5)) {
         case 0:
-            pair = createWherePair(table, generator.generateExpression(GaussDBDataType.BOOLEAN));
+            pair = createWherePair(table, generator.generateExpression(GaussDBDataType.BOOLEAN), bypassBug);
             break;
         case 1:
-            pair = createDistinctPair(table, generator.generateExpression(GaussDBDataType.BOOLEAN));
+            pair = createDistinctPair(table, generator.generateExpression(GaussDBDataType.BOOLEAN), bypassBug);
             break;
         case 2:
             pair = createGroupByPair(table, Randomly.fromList(table.getColumns()),
-                    generator.generateExpression(GaussDBDataType.BOOLEAN));
+                    generator.generateExpression(GaussDBDataType.BOOLEAN), bypassBug);
             break;
         case 3:
-            pair = buildHavingPair(table);
+            pair = buildHavingPair(table, bypassBug);
             break;
         case 4:
-            pair = createAggregatePair(table, generator.generateExpression(GaussDBDataType.BOOLEAN));
+            pair = createAggregatePair(table, generator.generateExpression(GaussDBDataType.BOOLEAN), bypassBug);
             break;
         case 5:
-            pair = buildJoinPair();
+            pair = buildJoinPair(bypassBug);
             break;
         default:
             throw new AssertionError();
@@ -115,47 +117,65 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
     }
 
     static TLPQueryPair createWherePair(GaussDBTable table, GaussDBExpression predicate) {
+        return createWherePair(table, predicate, false);
+    }
+
+    static TLPQueryPair createWherePair(GaussDBTable table, GaussDBExpression predicate, boolean bypassBug) {
         GaussDBSelect original = new GaussDBSelect();
         original.setFetchColumns(Collections.singletonList(new GaussDBStar()));
         original.setFromList(Collections.singletonList(new GaussDBAlias(new GaussDBTableReference(table), TABLE_ALIAS)));
 
         GaussDBSetOperation unionAll = buildThreeValuedUnion(table, Collections.singletonList(new GaussDBStar()),
-                predicate, false);
+                predicate, false, bypassBug);
         return new TLPQueryPair(GaussDBToStringVisitor.asString(original), GaussDBToStringVisitor.asString(unionAll));
     }
 
     static TLPQueryPair createDistinctPair(GaussDBTable table, GaussDBExpression predicate) {
+        return createDistinctPair(table, predicate, false);
+    }
+
+    static TLPQueryPair createDistinctPair(GaussDBTable table, GaussDBExpression predicate, boolean bypassBug) {
         GaussDBSelect original = new GaussDBSelect();
         original.setDistinct(true);
         original.setFetchColumns(Collections.singletonList(new GaussDBStar()));
         original.setFromList(Collections.singletonList(new GaussDBAlias(new GaussDBTableReference(table), TABLE_ALIAS)));
 
         GaussDBSetOperation union = buildThreeValuedUnion(table, Collections.singletonList(new GaussDBStar()),
-                predicate, true);
+                predicate, true, bypassBug);
         return new TLPQueryPair(GaussDBToStringVisitor.asString(original), GaussDBToStringVisitor.asString(union));
     }
 
     static TLPQueryPair createGroupByPair(GaussDBTable table, GaussDBColumn groupCol, GaussDBExpression predicate) {
+        return createGroupByPair(table, groupCol, predicate, false);
+    }
+
+    static TLPQueryPair createGroupByPair(GaussDBTable table, GaussDBColumn groupCol, GaussDBExpression predicate,
+            boolean bypassBug) {
         GaussDBExpression colRef = new GaussDBColumnReference(groupCol, TABLE_ALIAS);
         GaussDBSelect original = new GaussDBSelect();
         original.setFetchColumns(Collections.singletonList(new GaussDBAlias(colRef, "g0")));
         original.setFromList(Collections.singletonList(new GaussDBAlias(new GaussDBTableReference(table), TABLE_ALIAS)));
         original.setGroupByExpressions(Collections.singletonList(colRef));
 
-        GaussDBSetOperation union = buildThreeValuedGroupByUnion(table, colRef, predicate, false);
+        GaussDBSetOperation union = buildThreeValuedGroupByUnion(table, colRef, predicate, false, bypassBug);
         return new TLPQueryPair(GaussDBToStringVisitor.asString(original), GaussDBToStringVisitor.asString(union));
     }
 
-    private TLPQueryPair buildHavingPair(GaussDBTable table) {
+    private TLPQueryPair buildHavingPair(GaussDBTable table, boolean bypassBug) {
         GaussDBColumn groupCol = Randomly.fromList(table.getColumns());
         GaussDBExpressionGenerator generator = new GaussDBExpressionGenerator(state);
         generator.setColumns(Collections.singletonList(groupCol));
         generator.setTableAlias(TABLE_ALIAS);
         GaussDBExpression havingPred = generator.generateExpression(GaussDBDataType.BOOLEAN);
-        return createHavingPair(table, groupCol, havingPred);
+        return createHavingPair(table, groupCol, havingPred, bypassBug);
     }
 
     static TLPQueryPair createHavingPair(GaussDBTable table, GaussDBColumn groupCol, GaussDBExpression havingPred) {
+        return createHavingPair(table, groupCol, havingPred, false);
+    }
+
+    static TLPQueryPair createHavingPair(GaussDBTable table, GaussDBColumn groupCol, GaussDBExpression havingPred,
+            boolean bypassBug) {
         GaussDBExpression colRef = new GaussDBColumnReference(groupCol, TABLE_ALIAS);
         GaussDBAggregate countStar = new GaussDBAggregate(GaussDBAggregate.Function.COUNT,
                 Collections.singletonList(new GaussDBStar()), GaussDBDataType.INT);
@@ -169,8 +189,8 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
 
         GaussDBSelect isTrue = selectGroupByHavingBranch(table, fetchCols, colRef,
                 new GaussDBUnaryOperation(havingPred, GaussDBUnaryOperation.Operator.IS_TRUE, GaussDBDataType.BOOLEAN));
-        GaussDBSelect isFalse = selectGroupByHavingBranch(table, fetchCols, colRef, new GaussDBUnaryOperation(
-                havingPred, GaussDBUnaryOperation.Operator.IS_FALSE, GaussDBDataType.BOOLEAN));
+        GaussDBSelect isFalse = selectGroupByHavingBranch(table, fetchCols, colRef,
+                buildIsFalseCondition(havingPred, bypassBug));
         GaussDBSelect isNull = selectGroupByHavingBranch(table, fetchCols, colRef,
                 new GaussDBUnaryOperation(havingPred, GaussDBUnaryOperation.Operator.IS_NULL, GaussDBDataType.BOOLEAN));
 
@@ -182,6 +202,10 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
     }
 
     static TLPQueryPair createAggregatePair(GaussDBTable table, GaussDBExpression predicate) {
+        return createAggregatePair(table, predicate, false);
+    }
+
+    static TLPQueryPair createAggregatePair(GaussDBTable table, GaussDBExpression predicate, boolean bypassBug) {
         List<GaussDBColumn> numericCols = table.getColumns().stream()
                 .filter(c -> c.getType() == GaussDBDataType.INT || c.getType() == GaussDBDataType.DECIMAL)
                 .collect(Collectors.toList());
@@ -190,7 +214,7 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
                     Collections.singletonList(new GaussDBStar()), GaussDBDataType.INT);
             GaussDBSelect original = GaussDBEETOracle.selectAggregateFrom(table, countStar);
             GaussDBSetOperation branches = buildThreeValuedUnion(table,
-                    Collections.singletonList(new GaussDBAlias(countStar, "agg0")), predicate, false);
+                    Collections.singletonList(new GaussDBAlias(countStar, "agg0")), predicate, false, bypassBug);
             String partitionedSql = "SELECT CAST(COALESCE(SUM(agg0), 0) AS BIGINT) AS row_count FROM ("
                     + GaussDBToStringVisitor.asString(branches) + ") AS tlp_agg";
             return new TLPQueryPair(GaussDBToStringVisitor.asString(original), partitionedSql);
@@ -202,7 +226,7 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
         GaussDBAggregate agg = new GaussDBAggregate(fn, Collections.singletonList(colRef), col.getType());
         GaussDBSelect original = GaussDBEETOracle.selectAggregateFrom(table, agg);
         GaussDBSetOperation branches = buildThreeValuedUnion(table,
-                Collections.singletonList(new GaussDBAlias(agg, "agg0")), predicate, false);
+                Collections.singletonList(new GaussDBAlias(agg, "agg0")), predicate, false, bypassBug);
         String outerCombine;
         if (fn == GaussDBAggregate.Function.COUNT) {
             outerCombine = "CAST(COALESCE(SUM(agg0), 0) AS BIGINT)";
@@ -216,7 +240,7 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
         return new TLPQueryPair(GaussDBToStringVisitor.asString(original), partitionedSql);
     }
 
-    private TLPQueryPair buildJoinPair() {
+    private TLPQueryPair buildJoinPair(boolean bypassBug) {
         GaussDBTable leftTable = state.getSchema()
                 .getRandomTableOrBailout(candidate -> !candidate.isView() && !candidate.getColumns().isEmpty());
         GaussDBTable rightTable = state.getSchema()
@@ -248,8 +272,7 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
         isTrue.setWhereClause(
                 new GaussDBUnaryOperation(wherePred, GaussDBUnaryOperation.Operator.IS_TRUE, GaussDBDataType.BOOLEAN));
         GaussDBSelect isFalse = GaussDBEETOracle.selectStarJoin(leftTable, rightTable, joinType, onPred);
-        isFalse.setWhereClause(
-                new GaussDBUnaryOperation(wherePred, GaussDBUnaryOperation.Operator.IS_FALSE, GaussDBDataType.BOOLEAN));
+        isFalse.setWhereClause(buildIsFalseCondition(wherePred, bypassBug));
         GaussDBSelect isNull = GaussDBEETOracle.selectStarJoin(leftTable, rightTable, joinType, onPred);
         isNull.setWhereClause(
                 new GaussDBUnaryOperation(wherePred, GaussDBUnaryOperation.Operator.IS_NULL, GaussDBDataType.BOOLEAN));
@@ -262,15 +285,13 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
     }
 
     private static GaussDBSetOperation buildThreeValuedUnion(GaussDBTable table, List<GaussDBExpression> fetchCols,
-            GaussDBExpression predicate, boolean distinct) {
+            GaussDBExpression predicate, boolean distinct, boolean bypassBug) {
         GaussDBSetOperation.Operator op = distinct ? GaussDBSetOperation.Operator.UNION
                 : GaussDBSetOperation.Operator.UNION_ALL;
         GaussDBSelect isTrue = selectBranch(table, fetchCols,
                 new GaussDBUnaryOperation(predicate, GaussDBUnaryOperation.Operator.IS_TRUE, GaussDBDataType.BOOLEAN),
                 distinct);
-        GaussDBSelect isFalse = selectBranch(table, fetchCols,
-                new GaussDBUnaryOperation(predicate, GaussDBUnaryOperation.Operator.IS_FALSE, GaussDBDataType.BOOLEAN),
-                distinct);
+        GaussDBSelect isFalse = selectBranch(table, fetchCols, buildIsFalseCondition(predicate, bypassBug), distinct);
         GaussDBSelect isNull = selectBranch(table, fetchCols,
                 new GaussDBUnaryOperation(predicate, GaussDBUnaryOperation.Operator.IS_NULL, GaussDBDataType.BOOLEAN),
                 distinct);
@@ -278,15 +299,13 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
     }
 
     private static GaussDBSetOperation buildThreeValuedGroupByUnion(GaussDBTable table, GaussDBExpression colRef,
-            GaussDBExpression predicate, boolean distinct) {
+            GaussDBExpression predicate, boolean distinct, boolean bypassBug) {
         List<GaussDBExpression> fetchCols = Collections.singletonList(new GaussDBAlias(colRef, "g0"));
         GaussDBSelect isTrue = selectBranch(table, fetchCols,
                 new GaussDBUnaryOperation(predicate, GaussDBUnaryOperation.Operator.IS_TRUE, GaussDBDataType.BOOLEAN),
                 distinct);
         isTrue.setGroupByExpressions(Collections.singletonList(colRef));
-        GaussDBSelect isFalse = selectBranch(table, fetchCols,
-                new GaussDBUnaryOperation(predicate, GaussDBUnaryOperation.Operator.IS_FALSE, GaussDBDataType.BOOLEAN),
-                distinct);
+        GaussDBSelect isFalse = selectBranch(table, fetchCols, buildIsFalseCondition(predicate, bypassBug), distinct);
         isFalse.setGroupByExpressions(Collections.singletonList(colRef));
         GaussDBSelect isNull = selectBranch(table, fetchCols,
                 new GaussDBUnaryOperation(predicate, GaussDBUnaryOperation.Operator.IS_NULL, GaussDBDataType.BOOLEAN),
@@ -294,6 +313,19 @@ public class GaussDBTLPOracle implements TestOracle<GaussDBGlobalState> {
         isNull.setGroupByExpressions(Collections.singletonList(colRef));
         return new GaussDBSetOperation(new GaussDBSetOperation(isTrue, isFalse, GaussDBSetOperation.Operator.UNION),
                 isNull, GaussDBSetOperation.Operator.UNION);
+    }
+
+    private static GaussDBExpression buildIsFalseCondition(GaussDBExpression predicate,
+            boolean bypassBooleanTestRangeBug) {
+        GaussDBExpression isFalse = new GaussDBUnaryOperation(predicate, GaussDBUnaryOperation.Operator.IS_FALSE,
+                GaussDBDataType.BOOLEAN);
+        if (!bypassBooleanTestRangeBug) {
+            return isFalse;
+        }
+        GaussDBExpression isNotNull = new GaussDBUnaryOperation(predicate, GaussDBUnaryOperation.Operator.IS_NOT_NULL,
+                GaussDBDataType.BOOLEAN);
+        return new GaussDBBinaryOperation(isFalse, isNotNull, GaussDBBinaryOperation.Operator.AND,
+                GaussDBDataType.BOOLEAN);
     }
 
     private static GaussDBSelect selectBranch(GaussDBTable table, List<GaussDBExpression> fetchCols,

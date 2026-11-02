@@ -777,7 +777,7 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
             while (rs.next()) {
                 List<String> row = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
-                    row.add(rs.getString(i));
+                    row.add(GaussDBEETOracle.normalizeCellValue(rs.getString(i)));
                 }
                 results.add(row.toString());
             }

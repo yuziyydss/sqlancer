@@ -1339,7 +1339,7 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
             while (resultSet.next()) {
                 List<String> row = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
-                    row.add(resultSet.getString(i));
+                    row.add(normalizeCellValue(resultSet.getString(i)));
                 }
                 results.add(row.toString());
             }
@@ -1350,6 +1350,14 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
             throw e;
         }
         return results;
+    }
+
+    static String normalizeCellValue(String value) {
+        if (value != null && value.length() == 22 && value.endsWith(" AD") && value.charAt(4) == '-'
+                && value.charAt(7) == '-') {
+            return value.substring(0, value.length() - 3);
+        }
+        return value;
     }
 
     @Override
