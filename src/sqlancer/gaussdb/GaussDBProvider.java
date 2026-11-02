@@ -128,8 +128,29 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
             throw new AssertionError(e);
         }
 
-        Connection con = DriverManager.getConnection("jdbc:" + testURL, username, password);
+        Connection con = null;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                con = DriverManager.getConnection("jdbc:" + testURL, username, password);
+                break;
+            } catch (SQLException e) {
+                if (e.getMessage() != null && e.getMessage().contains("memory is temporarily unavailable") && attempt < 2) {
+                    try {
+                        Thread.sleep(1500);
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                    }
+                    continue;
+                }
+                throw e;
+            }
+        }
+
         try (Statement s = con.createStatement()) {
+            try {
+                s.execute("DISCARD ALL");
+            } catch (SQLException ignored) {
+            }
             if (globalState.getDbmsSpecificOptions().useSchemaIsolation) {
                 s.execute("DROP SCHEMA IF EXISTS " + schemaName + " CASCADE");
                 s.execute("CREATE SCHEMA " + schemaName);

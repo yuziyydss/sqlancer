@@ -575,7 +575,11 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
         if (targetColumn == null || sourceColumn == null) {
             return;
         }
-        String aggregate = Randomly.fromOptions("MAX", "MIN", "COUNT");
+        String aggregate = targetTable.getName().equals(sourceTable.getName())
+                && state.getDbmsSpecificOptions() != null
+                && state.getDbmsSpecificOptions().bypassBooleanTestRangeBug
+                        ? Randomly.fromOptions("MAX", "MIN")
+                        : Randomly.fromOptions("MAX", "MIN", "COUNT");
         GaussDBSelect subquerySelect = selectAggregateFrom(sourceTable, sourceColumn, aggregate, "s");
         String subquery = GaussDBToStringVisitor.asString(subquerySelect);
         GaussDBExpressionBag subqueryBag = new GaussDBExpressionBag(new GaussDBSubquery(subquerySelect));
@@ -697,6 +701,16 @@ public class GaussDBCODDTestOracle implements TestOracle<GaussDBGlobalState> {
         case FLOAT:
         case REAL:
             return GaussDBConstant.createDecimalConstant(new java.math.BigDecimal(value));
+        case DATE:
+            return GaussDBConstant.createDateConstant(value);
+        case TIMESTAMP:
+            return GaussDBConstant.createTimestampConstant(value);
+        case TIMESTAMPTZ:
+            return GaussDBConstant.createTimestamptzConstant(value);
+        case TIME:
+            return GaussDBConstant.createTimeConstant(value);
+        case INTERVAL:
+            return GaussDBConstant.createIntervalConstant(value);
         default:
             throw new AssertionError(type);
         }

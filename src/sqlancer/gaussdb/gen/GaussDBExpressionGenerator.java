@@ -213,7 +213,13 @@ public final class GaussDBExpressionGenerator
     }
 
     private GaussDBExpression generatePolymorphicFunction(GaussDBDataType type, int depth) {
-        String fn = Randomly.fromOptions("coalesce", "nvl", "nullif", "greatest", "least");
+        String fn;
+        if (type == GaussDBDataType.BOOLEAN && globalState.getDbmsSpecificOptions() != null
+                && globalState.getDbmsSpecificOptions().bypassBooleanTestRangeBug) {
+            fn = Randomly.fromOptions("greatest", "least");
+        } else {
+            fn = Randomly.fromOptions("coalesce", "nvl", "nullif", "greatest", "least");
+        }
         return new GaussDBFunction(fn,
                 List.of(generateExpression(type, depth + 1), generateExpression(type, depth + 1)), type);
     }

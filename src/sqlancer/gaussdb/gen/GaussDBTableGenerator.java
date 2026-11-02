@@ -42,7 +42,7 @@ public class GaussDBTableGenerator {
         sb.append(")");
         if (Randomly.getBoolean()) {
             sb.append(" WITH (storage_type = ");
-            sb.append(Randomly.fromOptions("astore", "ustore"));
+            sb.append(Randomly.fromOptions("ustore", "ustore", "astore"));
             sb.append(")");
         }
         appendOptionalPartitionClause();
@@ -50,7 +50,7 @@ public class GaussDBTableGenerator {
     }
 
     private void appendOptionalPartitionClause() {
-        if (!Randomly.getBooleanWithSmallProbability()) {
+        if (!Randomly.getBoolean()) {
             return;
         }
         List<GaussDBColumn> intColumns = new ArrayList<>();

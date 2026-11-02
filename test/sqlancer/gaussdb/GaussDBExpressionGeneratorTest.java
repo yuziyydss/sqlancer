@@ -90,4 +90,26 @@ class GaussDBExpressionGeneratorTest {
         }
     }
 
+    @Test
+    void bypassBooleanTestRangeBugAvoidsBooleanNullTestsAndCoalesceNvl() {
+        GaussDBGlobalState state = new GaussDBGlobalState();
+        state.setMainOptions(new MainOptions());
+        GaussDBOptions options = new GaussDBOptions();
+        options.bypassBooleanTestRangeBug = true;
+        state.setDbmsSpecificOptions(options);
+        state.setRandomly(new Randomly(42));
+
+        GaussDBColumn intColumn = new GaussDBColumn("c0", GaussDBDataType.INT);
+        GaussDBColumn boolColumn = new GaussDBColumn("c1", GaussDBDataType.BOOLEAN);
+        GaussDBExpressionGenerator generator = new GaussDBExpressionGenerator(state);
+        generator.setColumns(List.of(intColumn, boolColumn));
+
+        for (int i = 0; i < 200; i++) {
+            String expression = GaussDBToStringVisitor
+                    .asString(generator.generateExpression(GaussDBDataType.BOOLEAN));
+            assertFalse(expression.contains("IS FALSE"), expression);
+            assertFalse(expression.contains("IS NOT FALSE"), expression);
+        }
+    }
+
 }

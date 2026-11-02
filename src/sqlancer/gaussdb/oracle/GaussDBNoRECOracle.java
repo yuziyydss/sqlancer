@@ -168,6 +168,12 @@ public class GaussDBNoRECOracle implements TestOracle<GaussDBGlobalState> {
             optimizedCount = executeCount(statement, pair.getOptimizedQuery(), errors);
             unoptimizedCount = executeCount(statement, pair.getUnoptimizedQuery(), errors);
             if (optimizedCount != unoptimizedCount) {
+                if (state.getDbmsSpecificOptions() != null && state.getDbmsSpecificOptions().bypassBooleanTestRangeBug) {
+                    String optSql = pair.getOptimizedQuery().toLowerCase();
+                    if ((optSql.contains("least") || optSql.contains("greatest")) && optSql.contains("between symmetric")) {
+                        return; // Known Bug #18: Expression Flatten Optimized folds self BETWEEN SYMMETRIC to false, breaking 3VL under LEAST/GREATEST
+                    }
+                }
                 reproducer = new GaussDBNoRECReproducer(pair);
                 throw new AssertionError("NoREC count mismatch\nOptimized: " + pair.getOptimizedQuery()
                         + "\nUnoptimized: " + pair.getUnoptimizedQuery() + "\nOptimizedCount: " + optimizedCount

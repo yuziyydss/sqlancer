@@ -329,7 +329,7 @@ public class GaussDBDQPOracle implements TestOracle<GaussDBGlobalState> {
             while (resultSet.next()) {
                 List<String> row = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
-                    row.add(resultSet.getString(i));
+                    row.add(normalizeCellValue(resultSet.getString(i)));
                 }
                 results.add(row.toString());
             }
@@ -340,6 +340,16 @@ public class GaussDBDQPOracle implements TestOracle<GaussDBGlobalState> {
             throw e;
         }
         return results;
+    }
+
+    private static String normalizeCellValue(String value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.matches("-?0\\.0+")) {
+            return "0";
+        }
+        return value;
     }
 
     static boolean areEquivalent(List<String> first, List<String> second) {

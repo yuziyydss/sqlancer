@@ -25,14 +25,14 @@ public final class GaussDBSetGenerator {
 
     public static SQLQueryAdapter set(GaussDBGlobalState globalState) {
         String sql;
-        switch (Randomly.fromOptions(0, 1, 2)) {
+        switch (Randomly.fromOptions(0, 1, 1, 2)) {
         case 0:
             String guc = Randomly.fromOptions(BOOLEAN_OPTIMIZER_GUCS);
             String val = Randomly.fromOptions("on", "off");
             sql = "SET " + guc + " = " + val;
             break;
         case 1:
-            int dop = Randomly.fromOptions(1, 2, 4);
+            int dop = Randomly.fromOptions(2, 4, 1);
             sql = "SET query_dop = " + dop;
             break;
         case 2:

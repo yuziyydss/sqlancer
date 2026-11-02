@@ -1,5 +1,7 @@
 package sqlancer.gaussdb.oracle;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -715,16 +717,17 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
         GaussDBExpression argument = new GaussDBColumnReference(argumentColumn, TABLE_ALIAS);
         GaussDBExpression partitionExpression = new GaussDBColumnReference(partitionColumn, TABLE_ALIAS);
         GaussDBExpression orderExpression = new GaussDBColumnReference(orderColumn, TABLE_ALIAS);
+        List<GaussDBExpression> orderExpressions = Arrays.asList(orderExpression, ctidReference(TABLE_ALIAS));
         GaussDBExpression condition = generator.generateExpression(GaussDBDataType.BOOLEAN);
         String functionName = Randomly.fromOptions("lag", "lead");
 
         GaussDBWindowFunction originalFunction = new GaussDBWindowFunction(functionName,
-                Collections.singletonList(argument), Collections.singletonList(partitionExpression),
-                Collections.singletonList(orderExpression), argumentColumn.getType());
+                Collections.singletonList(argument), Collections.singletonList(partitionExpression), orderExpressions,
+                argumentColumn.getType());
         GaussDBWindowFunction transformedFunction = new GaussDBWindowFunction(functionName,
                 Collections.singletonList(argument),
-                Collections.singletonList(transform(partitionExpression, condition)),
-                Collections.singletonList(orderExpression), argumentColumn.getType());
+                Collections.singletonList(transform(partitionExpression, condition)), orderExpressions,
+                argumentColumn.getType());
 
         String originalQuery = GaussDBToStringVisitor.asString(selectValueFrom(table, originalFunction));
         String transformedQuery = GaussDBToStringVisitor.asString(selectValueFrom(table, transformedFunction));
@@ -738,6 +741,7 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
         GaussDBColumn orderColumn = Randomly.fromList(table.getColumns());
         GaussDBExpression partitionExpression = new GaussDBColumnReference(partitionColumn, TABLE_ALIAS);
         GaussDBExpression orderExpression = new GaussDBColumnReference(orderColumn, TABLE_ALIAS);
+        List<GaussDBExpression> orderExpressions = Arrays.asList(orderExpression, ctidReference(TABLE_ALIAS));
         GaussDBExpression condition = generator.generateExpression(GaussDBDataType.BOOLEAN);
         String functionName = Randomly.fromOptions("first_value", "last_value", "ntile", "nth_value");
         List<GaussDBExpression> arguments;
@@ -756,10 +760,9 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
         }
 
         GaussDBWindowFunction originalFunction = new GaussDBWindowFunction(functionName, arguments,
-                Collections.singletonList(partitionExpression), Collections.singletonList(orderExpression), returnType);
+                Collections.singletonList(partitionExpression), orderExpressions, returnType);
         GaussDBWindowFunction transformedFunction = new GaussDBWindowFunction(functionName, arguments,
-                Collections.singletonList(transform(partitionExpression, condition)),
-                Collections.singletonList(orderExpression), returnType);
+                Collections.singletonList(transform(partitionExpression, condition)), orderExpressions, returnType);
 
         String originalQuery = GaussDBToStringVisitor.asString(selectValueFrom(table, originalFunction));
         String transformedQuery = GaussDBToStringVisitor.asString(selectValueFrom(table, transformedFunction));
@@ -784,14 +787,17 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
                         GaussDBWindowFrame.Boundary.currentRow()),
                 GaussDBWindowFrame.between(GaussDBWindowFrame.FrameType.RANGE,
                         GaussDBWindowFrame.Boundary.unboundedPreceding(), GaussDBWindowFrame.Boundary.currentRow()));
+        List<GaussDBExpression> orderExpressions = frame.getFrameType() == GaussDBWindowFrame.FrameType.RANGE
+                ? Collections.singletonList(argument)
+                : Arrays.asList(orderExpression, ctidReference(TABLE_ALIAS));
 
         GaussDBWindowFunction originalFunction = new GaussDBWindowFunction(functionName,
-                Collections.singletonList(argument), Collections.singletonList(partitionExpression),
-                Collections.singletonList(orderExpression), argumentColumn.getType(), frame);
+                Collections.singletonList(argument), Collections.singletonList(partitionExpression), orderExpressions,
+                argumentColumn.getType(), frame);
         GaussDBWindowFunction transformedFunction = new GaussDBWindowFunction(functionName,
                 Collections.singletonList(argument),
-                Collections.singletonList(transform(partitionExpression, condition)),
-                Collections.singletonList(orderExpression), argumentColumn.getType(), frame);
+                Collections.singletonList(transform(partitionExpression, condition)), orderExpressions,
+                argumentColumn.getType(), frame);
 
         String originalQuery = GaussDBToStringVisitor.asString(selectValueFrom(table, originalFunction));
         String transformedQuery = GaussDBToStringVisitor.asString(selectValueFrom(table, transformedFunction));
@@ -1353,9 +1359,15 @@ public class GaussDBEETOracle implements TestOracle<GaussDBGlobalState> {
     }
 
     static String normalizeCellValue(String value) {
-        if (value != null && value.length() == 22 && value.endsWith(" AD") && value.charAt(4) == '-'
-                && value.charAt(7) == '-') {
+        if (value == null) {
+            return null;
+        }
+        if (value.length() == 22 && value.endsWith(" AD") && value.charAt(4) == '-' && value.charAt(7) == '-') {
             return value.substring(0, value.length() - 3);
+        }
+        int dotIndex = value.indexOf('.');
+        if (dotIndex >= 0 && value.length() - dotIndex - 1 >= 12 && value.matches("-?\\d*\\.\\d+")) {
+            return new BigDecimal(value).setScale(10, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
         }
         return value;
     }

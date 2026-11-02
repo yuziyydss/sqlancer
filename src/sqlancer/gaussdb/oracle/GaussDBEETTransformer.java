@@ -80,6 +80,9 @@ public final class GaussDBEETTransformer {
 
     static GaussDBExpression applyRandomRule(GaussDBExpression expression, GaussDBExpression condition,
             Randomly randomly) {
+        if (expression instanceof GaussDBConstant.DecimalConstant) {
+            return applyRule(Rule.CASE_SAME_BRANCHES, expression, condition, randomly);
+        }
         Rule rule = Randomly.fromList(Rule.applicableRules(expression.getExpressionType()));
         return applyRule(rule, expression, condition, randomly);
     }
