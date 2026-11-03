@@ -29,12 +29,44 @@ public final class GaussDBErrors {
         errors.add("invalid byte sequence for encoding");
         errors.add("null character not permitted");
         errors.add("memory is temporarily unavailable");
+        // Connection & restart transient errors to survive DB restarts / OOM-recoveries
+        errors.add("Connection refused");
+        errors.add("Connection to");
+        errors.add("refused");
+        errors.add("Connection reset");
+        errors.add("broken pipe");
+        errors.add("This connection has been closed");
+        errors.add("An I/O error occurred while sending to the backend");
+        errors.add("An I/O error occurred while reading from the backend");
+        errors.add("the database system is starting up");
+        errors.add("the database system is in recovery mode");
+        errors.add("the database system is shutting down");
+        errors.add("terminating connection due to administrator command");
+        errors.add("FATAL: terminating connection");
+        errors.add("sorry, too many clients already");
+        errors.add("Socket closed");
     }
 
     public static void addCommonFetchErrors(ExpectedErrors errors) {
         errors.add("canceling statement due to statement timeout");
         errors.add("current transaction is aborted");
         errors.add("memory is temporarily unavailable");
+        // Connection & restart transient errors
+        errors.add("Connection refused");
+        errors.add("Connection to");
+        errors.add("refused");
+        errors.add("Connection reset");
+        errors.add("broken pipe");
+        errors.add("This connection has been closed");
+        errors.add("An I/O error occurred while sending to the backend");
+        errors.add("An I/O error occurred while reading from the backend");
+        errors.add("the database system is starting up");
+        errors.add("the database system is in recovery mode");
+        errors.add("the database system is shutting down");
+        errors.add("terminating connection due to administrator command");
+        errors.add("FATAL: terminating connection");
+        errors.add("sorry, too many clients already");
+        errors.add("Socket closed");
     }
 
 }

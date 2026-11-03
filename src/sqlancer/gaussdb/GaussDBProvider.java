@@ -129,14 +129,45 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
         }
 
         Connection con = null;
-        for (int attempt = 0; attempt < 3; attempt++) {
+        int maxAttempts = 30; // Retry up to 5 minutes to gracefully survive database OOM-killer restarts
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 con = DriverManager.getConnection("jdbc:" + testURL, username, password);
+                try (Statement s = con.createStatement()) {
+                    try {
+                        s.execute("DISCARD ALL");
+                    } catch (SQLException ignored) {
+                    }
+                    if (globalState.getDbmsSpecificOptions().useSchemaIsolation) {
+                        s.execute("DROP SCHEMA IF EXISTS " + schemaName + " CASCADE");
+                        s.execute("CREATE SCHEMA " + schemaName);
+                        s.execute("SET search_path TO " + schemaName);
+                    }
+                    for (String sessionGuc : Arrays.asList("SET disable_gpc_store = on", "SET cursor_sharing = off",
+                            "SET spm_enable_plan_capture = off", "SET spm_enable_plan_history_logging = off",
+                            "SET instr_unique_sql_track_type = top", "SELECT reset_unique_sql('GLOBAL', 'ALL', 0)",
+                            "SELECT plancache_clean()")) {
+                        try {
+                            s.execute(sessionGuc);
+                        } catch (SQLException ignored) {
+                            // Best-effort session GUCs to prevent global plan/SPM/unique-SQL cache bloat during high-speed fuzzing.
+                        }
+                    }
+                }
                 break;
             } catch (SQLException e) {
-                if (e.getMessage() != null && e.getMessage().contains("memory is temporarily unavailable") && attempt < 2) {
+                if (con != null) {
                     try {
-                        Thread.sleep(1500);
+                        con.close();
+                    } catch (SQLException ignored) {
+                    }
+                    con = null;
+                }
+                if (attempt < maxAttempts && isTransientConnectionError(e)) {
+                    System.err.printf("[GaussDBProvider] Database connection attempt %d/%d failed (%s). Waiting 10s for database restart/recovery...%n",
+                            attempt, maxAttempts, e.getMessage());
+                    try {
+                        Thread.sleep(10000);
                     } catch (InterruptedException ignored) {
                         Thread.currentThread().interrupt();
                     }
@@ -145,29 +176,35 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
                 throw e;
             }
         }
+        return new SQLConnection(con);
+    }
 
-        try (Statement s = con.createStatement()) {
-            try {
-                s.execute("DISCARD ALL");
-            } catch (SQLException ignored) {
-            }
-            if (globalState.getDbmsSpecificOptions().useSchemaIsolation) {
-                s.execute("DROP SCHEMA IF EXISTS " + schemaName + " CASCADE");
-                s.execute("CREATE SCHEMA " + schemaName);
-                s.execute("SET search_path TO " + schemaName);
-            }
-            for (String sessionGuc : Arrays.asList("SET disable_gpc_store = on", "SET cursor_sharing = off",
-                    "SET spm_enable_plan_capture = off", "SET spm_enable_plan_history_logging = off",
-                    "SET instr_unique_sql_track_type = top", "SELECT reset_unique_sql('GLOBAL', 'ALL', 0)",
-                    "SELECT plancache_clean()")) {
-                try {
-                    s.execute(sessionGuc);
-                } catch (SQLException ignored) {
-                    // Best-effort session GUCs to prevent global plan/SPM/unique-SQL cache bloat during high-speed fuzzing.
+    public static boolean isTransientConnectionError(Throwable t) {
+        while (t != null) {
+            String msg = t.getMessage();
+            if (msg != null) {
+                String lower = msg.toLowerCase();
+                if (lower.contains("connection refused")
+                        || (lower.contains("connection to") && lower.contains("refused"))
+                        || lower.contains("starting up")
+                        || lower.contains("recovery mode")
+                        || lower.contains("shutting down")
+                        || lower.contains("connection reset")
+                        || lower.contains("broken pipe")
+                        || lower.contains("closed connection")
+                        || lower.contains("terminating connection")
+                        || lower.contains("socket closed")
+                        || lower.contains("sockettimeout")
+                        || lower.contains("eofexception")
+                        || lower.contains("i/o error")
+                        || lower.contains("memory is temporarily unavailable")
+                        || lower.contains("too many clients")) {
+                    return true;
                 }
             }
+            t = t.getCause();
         }
-        return new SQLConnection(con);
+        return false;
     }
 
     @Override
@@ -185,7 +222,12 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
     }
 
     protected void createTables(GaussDBGlobalState globalState, int numTables) throws Exception {
+        int attempts = 0;
         while (globalState.getSchema().getDatabaseTables().size() < numTables) {
+            attempts++;
+            if (attempts > 50) {
+                throw new IgnoreMeException();
+            }
             try {
                 String tableName = DBMSCommon.createTableName(globalState.getSchema().getDatabaseTables().size());
                 globalState.executeStatement(GaussDBTableGenerator.generate(tableName, globalState));
