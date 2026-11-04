@@ -133,9 +133,9 @@ public class GaussDBEDCOracle implements TestOracle<GaussDBGlobalState> {
         String shiftedQuery;
 
         if (Randomly.getBoolean() || nonShiftedCols.isEmpty()) {
-            // Aggregate Homomorphism test: COUNT, SUM, MIN
+            // Aggregate Homomorphism test: COUNT, SUM, MIN (preserving NULL semantics when matching row count is 0)
             baseQuery = String.format(
-                    "SELECT COUNT(*), (COALESCE(SUM(%s), 0) + (%d * COUNT(%s))), (COALESCE(MIN(%s), 0) + %d) FROM %s WHERE %s > %d",
+                    "SELECT COUNT(*), (COALESCE(SUM(%s), 0) + (%d * COUNT(%s))), COALESCE(MIN(%s) + %d, 0) FROM %s WHERE %s > %d",
                     shiftCol.getName(), k, shiftCol.getName(), shiftCol.getName(), k, baseTable.getName(), shiftCol.getName(), c);
             shiftedQuery = String.format(
                     "SELECT COUNT(*), COALESCE(SUM(%s), 0), COALESCE(MIN(%s), 0) FROM %s WHERE %s > %d",
