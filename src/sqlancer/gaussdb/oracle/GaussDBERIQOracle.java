@@ -192,8 +192,7 @@ public class GaussDBERIQOracle implements TestOracle<GaussDBGlobalState> {
 
         String viewSetup = "CREATE OR REPLACE VIEW " + viewName + " AS " + innerSql;
         String viewCleanup = "DROP VIEW IF EXISTS " + viewName + " CASCADE";
-        String tempSetup = "DROP TABLE IF EXISTS " + tempName + " CASCADE; CREATE TEMPORARY TABLE " + tempName
-                + " AS " + innerSql;
+        String tempSetup = "CREATE TEMPORARY TABLE " + tempName + " AS " + innerSql;
         String tempCleanup = "DROP TABLE IF EXISTS " + tempName + " CASCADE";
 
         return new ERIQQueryBundle(derivedSql, cteSql, viewSetup, viewQuery, viewCleanup, tempSetup, tempQuery,
@@ -223,7 +222,11 @@ public class GaussDBERIQOracle implements TestOracle<GaussDBGlobalState> {
             // Check against VIEW representation
             if (bundle.getViewSetup() != null) {
                 try {
-                    statement.execute(bundle.getViewSetup());
+                    try {
+                        statement.execute(bundle.getViewCleanup());
+                    } catch (SQLException ignored) {
+                    }
+                    executeSetup(statement, bundle.getViewSetup());
                     List<String> viewResults = executeAndGetRows(statement, bundle.getViewQuery());
                     if (!areEquivalent(derivedResults, viewResults)) {
                         derivedResults = executeAndGetRows(statement, bundle.getDerivedQuery());
@@ -249,7 +252,11 @@ public class GaussDBERIQOracle implements TestOracle<GaussDBGlobalState> {
             // Check against TEMPORARY TABLE representation
             if (bundle.getTempSetup() != null) {
                 try {
-                    statement.execute(bundle.getTempSetup());
+                    try {
+                        statement.execute(bundle.getTempCleanup());
+                    } catch (SQLException ignored) {
+                    }
+                    executeSetup(statement, bundle.getTempSetup());
                     List<String> tempResults = executeAndGetRows(statement, bundle.getTempQuery());
                     if (!areEquivalent(derivedResults, tempResults)) {
                         derivedResults = executeAndGetRows(statement, bundle.getDerivedQuery());
@@ -271,6 +278,17 @@ public class GaussDBERIQOracle implements TestOracle<GaussDBGlobalState> {
                     }
                 }
             }
+        }
+    }
+
+    private void executeSetup(Statement statement, String sql) throws SQLException {
+        try {
+            statement.execute(sql);
+        } catch (SQLException e) {
+            if (errors.errorIsExpected(e.getMessage())) {
+                throw new IgnoreMeException();
+            }
+            throw e;
         }
     }
 
