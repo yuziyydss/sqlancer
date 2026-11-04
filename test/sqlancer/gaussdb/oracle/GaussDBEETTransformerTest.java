@@ -39,7 +39,8 @@ class GaussDBEETTransformerTest {
     @Test
     void applicableRulesFilterByExpressionType() {
         assertEquals(List.of(Rule.CASE_SAME_BRANCHES), Rule.applicableRules(null));
-        assertEquals(List.of(Rule.CASE_SAME_BRANCHES, Rule.CASE_FALSE_THEN_RANDOM, Rule.CASE_TRUE_ELSE_RANDOM),
+        assertEquals(List.of(Rule.CASE_SAME_BRANCHES, Rule.CASE_FALSE_THEN_RANDOM, Rule.CASE_TRUE_ELSE_RANDOM,
+                Rule.NUMERIC_ADD_ZERO, Rule.NUMERIC_MUL_ONE),
                 Rule.applicableRules(GaussDBDataType.INT));
         assertEquals(List.of(Rule.CASE_SAME_BRANCHES, Rule.CASE_FALSE_THEN_RANDOM, Rule.CASE_TRUE_ELSE_RANDOM,
                 Rule.BOOL_AND_TRUE, Rule.BOOL_OR_FALSE), Rule.applicableRules(GaussDBDataType.BOOLEAN));

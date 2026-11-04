@@ -42,7 +42,8 @@ import sqlancer.gaussdb.gen.GaussDBExpressionGenerator;
 public final class GaussDBEETTransformer {
 
     public enum Rule {
-        CASE_SAME_BRANCHES, CASE_FALSE_THEN_RANDOM, CASE_TRUE_ELSE_RANDOM, BOOL_AND_TRUE, BOOL_OR_FALSE;
+        CASE_SAME_BRANCHES, CASE_FALSE_THEN_RANDOM, CASE_TRUE_ELSE_RANDOM, BOOL_AND_TRUE, BOOL_OR_FALSE,
+        NUMERIC_ADD_ZERO, NUMERIC_MUL_ONE;
 
         static List<Rule> applicableRules(GaussDBDataType type) {
             List<Rule> rules = new ArrayList<>();
@@ -55,7 +56,16 @@ public final class GaussDBEETTransformer {
                 rules.add(BOOL_AND_TRUE);
                 rules.add(BOOL_OR_FALSE);
             }
+            if (isNumeric(type)) {
+                rules.add(NUMERIC_ADD_ZERO);
+                rules.add(NUMERIC_MUL_ONE);
+            }
             return rules;
+        }
+
+        private static boolean isNumeric(GaussDBDataType type) {
+            return type == GaussDBDataType.INT || type == GaussDBDataType.DECIMAL
+                    || type == GaussDBDataType.FLOAT || type == GaussDBDataType.REAL;
         }
     }
 
@@ -110,6 +120,12 @@ public final class GaussDBEETTransformer {
             requireBoolean(rule, type);
             return new GaussDBBinaryOperation(expression, contradiction(condition), GaussDBBinaryOperation.Operator.OR,
                     GaussDBDataType.BOOLEAN);
+        case NUMERIC_ADD_ZERO:
+            return new GaussDBBinaryOperation(expression, GaussDBConstant.createIntConstant(0),
+                    GaussDBBinaryOperation.Operator.PLUS, type);
+        case NUMERIC_MUL_ONE:
+            return new GaussDBBinaryOperation(expression, GaussDBConstant.createIntConstant(1),
+                    GaussDBBinaryOperation.Operator.MULTIPLY, type);
         default:
             throw new AssertionError(rule);
         }

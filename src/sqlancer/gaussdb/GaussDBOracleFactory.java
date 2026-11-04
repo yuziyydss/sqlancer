@@ -9,6 +9,7 @@ import sqlancer.gaussdb.oracle.GaussDBDQEOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQPOracle;
 import sqlancer.gaussdb.oracle.GaussDBEETOracle;
 import sqlancer.gaussdb.oracle.GaussDBERIQOracle;
+import sqlancer.gaussdb.oracle.GaussDBSRSOracle;
 import sqlancer.gaussdb.oracle.GaussDBEPSCOracle;
 import sqlancer.gaussdb.oracle.GaussDBNoRECOracle;
 import sqlancer.gaussdb.oracle.GaussDBTLPOracle;
@@ -81,6 +82,13 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBERIQOracle(globalState);
+        }
+    },
+
+    SRS {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBSRSOracle(globalState);
         }
     }
 
