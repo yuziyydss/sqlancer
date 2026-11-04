@@ -31,4 +31,8 @@ public class SQLConnection implements SQLancerDBConnection {
     public Statement createStatement() throws SQLException {
         return connection.createStatement();
     }
+
+    public Connection getRawConnection() {
+        return connection;
+    }
 }

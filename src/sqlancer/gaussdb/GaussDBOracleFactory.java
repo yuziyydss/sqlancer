@@ -5,7 +5,11 @@ import java.sql.SQLException;
 import sqlancer.OracleFactory;
 import sqlancer.common.oracle.TestOracle;
 import sqlancer.gaussdb.oracle.GaussDBARGOracle;
+import sqlancer.gaussdb.oracle.GaussDBCERTOracle;
 import sqlancer.gaussdb.oracle.GaussDBCODDTestOracle;
+import sqlancer.gaussdb.oracle.GaussDBDDLCheckOracle;
+import sqlancer.gaussdb.oracle.GaussDBEDCOracle;
+import sqlancer.gaussdb.oracle.GaussDBWSSOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQEOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQPOracle;
 import sqlancer.gaussdb.oracle.GaussDBEETOracle;
@@ -97,6 +101,34 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBARGOracle(globalState);
+        }
+    },
+
+    CERT {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBCERTOracle(globalState);
+        }
+    },
+
+    DDLCHECK {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBDDLCheckOracle(globalState);
+        }
+    },
+
+    EDC {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBEDCOracle(globalState);
+        }
+    },
+
+    WSS {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBWSSOracle(globalState);
         }
     }
 

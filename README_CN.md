@@ -7,15 +7,15 @@
 
 **SQLancer** 是用于自动化测试数据库管理系统（DBMS）并挖掘其内核实现缺陷的顶级模糊测试工具。与传统的语法测试工具不同，SQLancer 的核心目标是发现数据库内核自身的代码逻辑缺陷（如优化器算错、执行器漏查数据、规划器崩溃、类型转换异常等）。
 
-本仓库为针对 **华为 GaussDB (GaussDB Kernel 507.0.0+)** 进行深度定制的专用版本，支持 Oracle 兼容模式、ASTORE/USTORE 双存储引擎、跨分区行迁移、SMP 并行计算以及包含 **8 大变异测试机（Oracles）** 的全量测试矩阵。
+本仓库为针对 **华为 GaussDB (GaussDB Kernel 507.0.0+)** 进行深度定制的专用版本，支持 Oracle 兼容模式、ASTORE/USTORE/CSTORE 三存储引擎、跨分区行迁移、SMP 并行计算、并发事务隔离性验证以及包含 **15 大变异测试机（Oracles）** 的全量测试矩阵。
 
 ---
 
 ## 核心特性与学术成果
 
-本分支融合了学术界近几年关于数据库内核测试的顶会论文成果（POPL、OOPSLA、SIGMOD、ICSE 等），并针对 GaussDB 的企业级架构进行了专有增强：
+本分支融合了学术界顶会论文成果（POPL、OOPSLA、SIGMOD、VLDB、ICSE、ASE 等），并针对 GaussDB 的企业级架构进行了专有增强：
 
-### 1. 全量 8-Oracle 综合测试矩阵
+### 1. 全量 15-Oracle 综合测试矩阵
 | 测试机 (Oracle) | 对应学术论文 | 检测机理与核心优势 |
 | :--- | :--- | :--- |
 | **CODDTest** | SIGMOD 2025 | 基于关系完备性与会话级常数优化驱动测试，擅长挖掘复杂标量子查询提升与唯一性消除缺陷。 |
@@ -23,10 +23,14 @@
 | **NoREC** (无优化参考引擎) | ESEC/FSE 2020 | 对比优化过滤查询与全表投影旁路求值查询，高灵敏度捕获谓词化简与索引误过滤。 |
 | **DQP / DQE** (差异执行计划) | SIGMOD 2024 / VLDB | 通过 GUC / Hint 强行切换物理算子路径（如 SeqScan vs IndexOnlyScan vs SkipScan），捕获执行器分歧。 |
 | **EET** (等价表达式变换) | ACM TOSEM / ICSE 2023 | 通过构造重言式条件与代数恒等式替换，检验表达式求值器与隐式类型转换一致性。 |
-| **THANOS** (存储引擎对齐) | FSE 2021 | 跨存储引擎差异比对（ASTORE 堆存储 vs USTORE 原地更新引擎 vs CSTORE 列式存储与 Psort 索引），捕获精度与可见性分歧。 |
+| **THANOS** (存储引擎对齐) | ICSE 2025 / FSE 2021 | 跨存储引擎差异比对（ASTORE 堆存储 vs USTORE 原地更新引擎 vs CSTORE 列式存储与 Psort 索引），捕获精度与可见性分歧。 |
 | **ERIQ** (中间查询等价表示) | arXiv 2026 | 将中间查询在 Derived Table、CTE (WITH)、视图 (VIEW) 与临时表 (TEMP TABLE) 4种等价形式间轮转比对，深挖谓词下推与物化分歧。 |
 | **SRS** (集合论蕴含推理) | SIGMOD 2026 | 基于集合论包含（INNER $\subseteq$ LEFT）与互斥完备划分（SEMI $\cap$ ANTI = $\emptyset$ 且 SEMI $\cup$ ANTI = BASE），专攻优化器 Join 树消除与子查询提升。 |
 | **ARG** (抽象重写规则差分) | ASE 2025 | 深度覆盖 GaussDB 全部 28 项专有代数重写规则（rewrite_rule），精确定位 Query Rewriter、CSE 与子连接拉升漏洞。 |
+| **CERT** (基数估计单调性) | ICSE 2024 | 约束条件下的 CBO 基数估计单调性检验（$Q_1 \land P_2 \implies \text{Rows}(Q_2) \le \text{Rows}(Q_1)$），专攻优化器代价失真与错误执行计划缺陷。 |
+| **DDLCheck** (等价模式演化) | VLDB 2025 | 对比经过动态 DDL 演化（ALTER TABLE ADD/DROP/RENAME COLUMN, INDEX, VACUUM）的表与直接静态建表的物理行解码与系统缓存一致性。 |
+| **EDC** (等价数据变换域移) | SIGMOD 2026 | 基于仿射数据变换（$x' = x + K$）验证谓词选择率同构与聚集同态，捕获数值算术溢出与 B-Tree 边界扫描缺陷。 |
+| **WSS** (写专有可串行化并发) | VLDB 2025 | 双线程并发事务在共享行上执行非对易更新，验证可串行化与可重复读隔离级别下的最终状态等价性，捕获丢失更新与脏写异常。 |
 | **EPSC** (等价计划状态检验) | SIGMOD 2020 | 事务与会话状态转换一致性探测。 |
 
 ### 2. GaussDB 企业级特性专属支持
