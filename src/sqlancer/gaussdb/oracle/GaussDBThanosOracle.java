@@ -48,6 +48,7 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
 
     static final String ASTORE_SUFFIX = "_thanos_astore";
     static final String USTORE_SUFFIX = "_thanos_ustore";
+    static final String CSTORE_SUFFIX = "_thanos_cstore";
     private static final String TABLE_ALIAS = "t";
 
     private final GaussDBGlobalState state;
@@ -67,12 +68,18 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
         private final List<String> setupSql;
         private final String astoreQuery;
         private final String ustoreQuery;
+        private final String cstoreQuery;
         private final List<String> cleanupSql;
 
-        EngineQueryPair(List<String> setupSql, String astoreQuery, String ustoreQuery, List<String> cleanupSql) {
+        public EngineQueryPair(List<String> setupSql, String astoreQuery, String ustoreQuery, List<String> cleanupSql) {
+            this(setupSql, astoreQuery, ustoreQuery, null, cleanupSql);
+        }
+
+        public EngineQueryPair(List<String> setupSql, String astoreQuery, String ustoreQuery, String cstoreQuery, List<String> cleanupSql) {
             this.setupSql = Collections.unmodifiableList(new ArrayList<>(setupSql));
             this.astoreQuery = astoreQuery;
             this.ustoreQuery = ustoreQuery;
+            this.cstoreQuery = cstoreQuery;
             this.cleanupSql = Collections.unmodifiableList(new ArrayList<>(cleanupSql));
         }
 
@@ -86,6 +93,10 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
 
         public String getUstoreQuery() {
             return ustoreQuery;
+        }
+
+        public String getCstoreQuery() {
+            return cstoreQuery;
         }
 
         public List<String> getCleanupSql() {
@@ -294,14 +305,17 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
     EngineQueryPair createMultiTablePair(List<GaussDBTable> tables, String astoreQuery, String ustoreQuery) {
         List<String> setup = new ArrayList<>();
         List<String> cleanup = new ArrayList<>();
+        String cstoreQuery = ustoreQuery.replace(USTORE_SUFFIX, CSTORE_SUFFIX);
         for (GaussDBTable table : tables) {
             String base = table.getName();
             String astore = base + ASTORE_SUFFIX;
             String ustore = base + USTORE_SUFFIX;
+            String cstore = base + CSTORE_SUFFIX;
             if (materializedTables.add(base)) {
-                setup.add("DROP TABLE IF EXISTS " + astore + ", " + ustore + " CASCADE");
+                setup.add("DROP TABLE IF EXISTS " + astore + ", " + ustore + ", " + cstore + " CASCADE");
                 setup.add("CREATE TABLE " + astore + " WITH (storage_type = astore) AS SELECT * FROM " + base);
                 setup.add("CREATE TABLE " + ustore + " WITH (storage_type = ustore) AS SELECT * FROM " + base);
+                setup.add("CREATE TABLE " + cstore + " WITH (ORIENTATION = COLUMN) AS SELECT * FROM " + base);
 
                 if (!table.getColumns().isEmpty() && Randomly.getBoolean()) {
                     GaussDBColumn indexedCol = Randomly.fromList(table.getColumns());
@@ -309,47 +323,78 @@ public class GaussDBThanosOracle implements TestOracle<GaussDBGlobalState> {
                             + ")");
                     setup.add("CREATE INDEX " + ustore + "_idx ON " + ustore + " USING ubtree (" + indexedCol.getName()
                             + ")");
+                    setup.add("CREATE INDEX " + cstore + "_idx ON " + cstore + " USING psort (" + indexedCol.getName()
+                            + ")");
                 }
 
-                // Exercise Ustore in-place update / undo-record path while keeping both tables logically identical:
-                // perform an identical deterministic DML statement on both twins when chosen.
+                // Exercise Ustore and Cstore updates while keeping tables logically identical
                 if (state != null && !table.getColumns().isEmpty() && Randomly.getBoolean()) {
                     GaussDBColumn targetCol = Randomly.fromList(table.getColumns());
                     String constantSql = GaussDBToStringVisitor.asString(
                             GaussDBExpressionGenerator.generateConstant(state.getRandomly(), targetCol.getType()));
                     setup.add("INSERT INTO " + astore + "(" + targetCol.getName() + ") VALUES (" + constantSql + ")");
                     setup.add("INSERT INTO " + ustore + "(" + targetCol.getName() + ") VALUES (" + constantSql + ")");
+                    setup.add("INSERT INTO " + cstore + "(" + targetCol.getName() + ") VALUES (" + constantSql + ")");
                     setup.add("UPDATE " + astore + " SET " + targetCol.getName() + " = " + targetCol.getName()
                             + " WHERE " + targetCol.getName() + " IS NOT NULL");
                     setup.add("UPDATE " + ustore + " SET " + targetCol.getName() + " = " + targetCol.getName()
                             + " WHERE " + targetCol.getName() + " IS NOT NULL");
+                    setup.add("UPDATE " + cstore + " SET " + targetCol.getName() + " = " + targetCol.getName()
+                            + " WHERE " + targetCol.getName() + " IS NOT NULL");
                 }
             }
-            cleanup.add("DROP TABLE IF EXISTS " + astore + ", " + ustore + " CASCADE");
+            cleanup.add("DROP TABLE IF EXISTS " + astore + ", " + ustore + ", " + cstore + " CASCADE");
         }
-        return new EngineQueryPair(setup, astoreQuery, ustoreQuery, cleanup);
+        return new EngineQueryPair(setup, astoreQuery, ustoreQuery, cstoreQuery, cleanup);
     }
 
     private void verifyPair(EngineQueryPair pair) throws SQLException {
         lastQueryString = pair.getAstoreQuery();
         SQLConnection connection = state.getConnection();
+        boolean cstoreAvailable = true;
         try (Statement statement = connection.createStatement()) {
             for (String sql : pair.getSetupSql()) {
-                executeSetup(statement, sql);
+                try {
+                    statement.execute(sql);
+                } catch (SQLException e) {
+                    if (sql.contains(CSTORE_SUFFIX)) {
+                        cstoreAvailable = false;
+                    } else {
+                        executeSetup(statement, sql);
+                    }
+                }
             }
             List<String> astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
             List<String> ustoreResults = executeAndGetRows(statement, pair.getUstoreQuery());
-            if (areEquivalent(astoreResults, ustoreResults)) {
-                return;
-            }
-            // Re-run once to rule out nondeterministic expressions.
-            astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
-            ustoreResults = executeAndGetRows(statement, pair.getUstoreQuery());
             if (!areEquivalent(astoreResults, ustoreResults)) {
-                reproducer = new GaussDBThanosReproducer(pair);
-                throw new AssertionError("Thanos storage-engine mismatch (astore vs ustore)\nAstoreQuery: "
-                        + pair.getAstoreQuery() + "\nUstoreQuery: " + pair.getUstoreQuery() + "\nAstoreResult: "
-                        + astoreResults + "\nUstoreResult: " + ustoreResults);
+                // Re-run once to rule out nondeterministic expressions.
+                astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
+                ustoreResults = executeAndGetRows(statement, pair.getUstoreQuery());
+                if (!areEquivalent(astoreResults, ustoreResults)) {
+                    reproducer = new GaussDBThanosReproducer(pair);
+                    throw new AssertionError("Thanos storage-engine mismatch (astore vs ustore)\nAstoreQuery: "
+                            + pair.getAstoreQuery() + "\nUstoreQuery: " + pair.getUstoreQuery() + "\nAstoreResult: "
+                            + astoreResults + "\nUstoreResult: " + ustoreResults);
+                }
+            }
+
+            // Cross-engine verification: Row (Astore) vs Column (CStore)
+            if (cstoreAvailable && pair.getCstoreQuery() != null) {
+                try {
+                    List<String> cstoreResults = executeAndGetRows(statement, pair.getCstoreQuery());
+                    if (!areEquivalent(astoreResults, cstoreResults)) {
+                        astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
+                        cstoreResults = executeAndGetRows(statement, pair.getCstoreQuery());
+                        if (!areEquivalent(astoreResults, cstoreResults)) {
+                            reproducer = new GaussDBThanosReproducer(pair);
+                            throw new AssertionError("Thanos storage-engine mismatch (astore vs cstore)\nAstoreQuery: "
+                                    + pair.getAstoreQuery() + "\nCstoreQuery: " + pair.getCstoreQuery() + "\nAstoreResult: "
+                                    + astoreResults + "\nCstoreResult: " + cstoreResults);
+                        }
+                    }
+                } catch (IgnoreMeException | SQLException ignored) {
+                    // Gracefully skip when query hits column-store specific unsupported expressions
+                }
             }
         }
     }

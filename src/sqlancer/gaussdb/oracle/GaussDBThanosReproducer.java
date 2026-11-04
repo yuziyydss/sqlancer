@@ -27,7 +27,17 @@ public final class GaussDBThanosReproducer implements Reproducer<GaussDBGlobalSt
                 }
                 List<String> astoreResults = executeAndGetRows(statement, pair.getAstoreQuery());
                 List<String> ustoreResults = executeAndGetRows(statement, pair.getUstoreQuery());
-                return !GaussDBThanosOracle.areEquivalent(astoreResults, ustoreResults);
+                if (!GaussDBThanosOracle.areEquivalent(astoreResults, ustoreResults)) {
+                    return true;
+                }
+                if (pair.getCstoreQuery() != null) {
+                    try {
+                        List<String> cstoreResults = executeAndGetRows(statement, pair.getCstoreQuery());
+                        return !GaussDBThanosOracle.areEquivalent(astoreResults, cstoreResults);
+                    } catch (Exception ignored) {
+                    }
+                }
+                return false;
             } finally {
                 for (String sql : pair.getCleanupSql()) {
                     try {

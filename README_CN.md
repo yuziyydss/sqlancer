@@ -23,7 +23,8 @@
 | **NoREC** (无优化参考引擎) | ESEC/FSE 2020 | 对比优化过滤查询与全表投影旁路求值查询，高灵敏度捕获谓词化简与索引误过滤。 |
 | **DQP / DQE** (差异执行计划) | SIGMOD 2024 / VLDB | 通过 GUC / Hint 强行切换物理算子路径（如 SeqScan vs IndexOnlyScan vs SkipScan），捕获执行器分歧。 |
 | **EET** (等价表达式变换) | ACM TOSEM / ICSE 2023 | 通过构造重言式条件与代数恒等式替换，检验表达式求值器与隐式类型转换一致性。 |
-| **THANOS** (存储引擎对齐) | FSE 2021 | 跨存储引擎差异比对（ASTORE 堆存储 vs USTORE 原地更新引擎），捕获精度与可见性分歧。 |
+| **THANOS** (存储引擎对齐) | FSE 2021 | 跨存储引擎差异比对（ASTORE 堆存储 vs USTORE 原地更新引擎 vs CSTORE 列式存储与 Psort 索引），捕获精度与可见性分歧。 |
+| **ERIQ** (中间查询等价表示) | arXiv 2026 | 将中间查询在 Derived Table、CTE (WITH)、视图 (VIEW) 与临时表 (TEMP TABLE) 4种等价形式间轮转比对，深挖谓词下推与物化分歧。 |
 | **EPSC** (等价计划状态检验) | SIGMOD 2020 | 事务与会话状态转换一致性探测。 |
 
 ### 2. GaussDB 企业级特性专属支持
@@ -56,7 +57,7 @@ mvn package -DskipTests
 
 ### 2. 运行测试
 
-#### 场景 A：全量 8-Oracle 综合压测（推荐）
+#### 场景 A：全量 9-Oracle 综合压测（推荐）
 ```bash
 java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --username sqlancer \
@@ -69,7 +70,7 @@ java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --num-tries 10000 \
   --print-progress-summary true \
   gaussdb \
-  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC \
+  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ \
   --bypass-boolean-test-range-bug true
 ```
 
@@ -97,7 +98,7 @@ java -jar target/sqlancer-2.0.0.jar --num-threads 2 gaussdb --oracle DQP
 * `--print-progress-summary`：是否定时打印 QPS 吞吐与进度汇总。
 
 ### GaussDB 专有参数 (置于 `gaussdb` 之后)
-* `--oracle`：启用的测试机列表，逗号分隔，可选：`EET`, `CODDTEST`, `DQP`, `DQE`, `THANOS`, `EPSC`, `TLP`, `NOREC`。
+* `--oracle`：启用的测试机列表，逗号分隔，可选：`EET`, `CODDTEST`, `DQP`, `DQE`, `THANOS`, `EPSC`, `TLP`, `NOREC`, `ERIQ`。
 * `--bypass-boolean-test-range-bug`：设置为 `true` 时，自动跳过已知的 `BETWEEN SYMMETRIC` 优化折叠与 3VL 范围化简已知缺陷。
 * `--connection-url`：直接指定特定 JDBC 连接串。
 

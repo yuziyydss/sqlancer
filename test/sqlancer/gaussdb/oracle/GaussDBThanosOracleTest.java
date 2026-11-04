@@ -45,12 +45,14 @@ class GaussDBThanosOracleTest {
                 "SELECT * FROM t0_thanos_astore AS t WHERE TRUE",
                 "SELECT * FROM t0_thanos_ustore AS t WHERE TRUE");
 
-        assertTrue(pair.getSetupSql().contains("DROP TABLE IF EXISTS t0_thanos_astore, t0_thanos_ustore CASCADE"));
+        assertTrue(pair.getSetupSql().contains("DROP TABLE IF EXISTS t0_thanos_astore, t0_thanos_ustore, t0_thanos_cstore CASCADE"));
         assertTrue(pair.getSetupSql()
                 .contains("CREATE TABLE t0_thanos_astore WITH (storage_type = astore) AS SELECT * FROM t0"));
         assertTrue(pair.getSetupSql()
                 .contains("CREATE TABLE t0_thanos_ustore WITH (storage_type = ustore) AS SELECT * FROM t0"));
-        assertEquals(List.of("DROP TABLE IF EXISTS t0_thanos_astore, t0_thanos_ustore CASCADE"), pair.getCleanupSql());
+        assertTrue(pair.getSetupSql()
+                .contains("CREATE TABLE t0_thanos_cstore WITH (ORIENTATION = COLUMN) AS SELECT * FROM t0"));
+        assertEquals(List.of("DROP TABLE IF EXISTS t0_thanos_astore, t0_thanos_ustore, t0_thanos_cstore CASCADE"), pair.getCleanupSql());
     }
 
     @Test
