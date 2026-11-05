@@ -10,6 +10,7 @@ import sqlancer.gaussdb.oracle.GaussDBCERTOracle;
 import sqlancer.gaussdb.oracle.GaussDBCODDTestOracle;
 import sqlancer.gaussdb.oracle.GaussDBDDLCheckOracle;
 import sqlancer.gaussdb.oracle.GaussDBDDLumosOracle;
+import sqlancer.gaussdb.oracle.GaussDBDistSQLOracle;
 import sqlancer.gaussdb.oracle.GaussDBEDCOracle;
 import sqlancer.gaussdb.oracle.GaussDBFucciOracle;
 import sqlancer.gaussdb.oracle.GaussDBISORelOracle;
@@ -241,6 +242,13 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBSedarOracle(globalState);
+        }
+    },
+
+    DISTSQL {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBDistSQLOracle(globalState);
         }
     }
 
