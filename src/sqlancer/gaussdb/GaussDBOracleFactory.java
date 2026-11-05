@@ -9,9 +9,15 @@ import sqlancer.gaussdb.oracle.GaussDBBoundaryOracle;
 import sqlancer.gaussdb.oracle.GaussDBCERTOracle;
 import sqlancer.gaussdb.oracle.GaussDBCODDTestOracle;
 import sqlancer.gaussdb.oracle.GaussDBDDLCheckOracle;
+import sqlancer.gaussdb.oracle.GaussDBDDLumosOracle;
 import sqlancer.gaussdb.oracle.GaussDBEDCOracle;
 import sqlancer.gaussdb.oracle.GaussDBJITOracle;
+import sqlancer.gaussdb.oracle.GaussDBJIROracle;
 import sqlancer.gaussdb.oracle.GaussDBPLSQLOracle;
+import sqlancer.gaussdb.oracle.GaussDBPinoloOracle;
+import sqlancer.gaussdb.oracle.GaussDBPuppyOracle;
+import sqlancer.gaussdb.oracle.GaussDBSCorOracle;
+import sqlancer.gaussdb.oracle.GaussDBSQLaserOracle;
 import sqlancer.gaussdb.oracle.GaussDBValScopeOracle;
 import sqlancer.gaussdb.oracle.GaussDBWSSOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQEOracle;
@@ -161,6 +167,48 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBPLSQLOracle(globalState);
+        }
+    },
+
+    PINOLO {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBPinoloOracle(globalState);
+        }
+    },
+
+    JIR {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBJIROracle(globalState);
+        }
+    },
+
+    SCOR {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBSCorOracle(globalState);
+        }
+    },
+
+    PUPPY {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBPuppyOracle(globalState);
+        }
+    },
+
+    DDLUMOS {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBDDLumosOracle(globalState);
+        }
+    },
+
+    SQLASER {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBSQLaserOracle(globalState);
         }
     }
 
