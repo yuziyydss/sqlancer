@@ -56,6 +56,7 @@
 * **高级分区表与动态迁移**：支持 Range / Hash 分区，强制覆盖 `ENABLE ROW MOVEMENT`（跨分区 UPDATE 自动迁移）与局部/全局索引并发更新。
 * **SMP 多线程并行查询**：动态调控 `SET query_dop = 1/2/4`，高频压迫 Parallel SeqScan、Parallel HashJoin 与 Parallel WindowAgg。
 * **长稳运行自愈保障**：集成会话级 `DISCARD ALL`、`plancache_clean()` 与系统缓存自愈重试，彻底解决长时间压测下的 `memory is temporarily unavailable` 内存池耗尽问题。
+* **Pisco 事务依赖感知自动化简与去重（VLDB'26）**：针对并发与事务性用例（WSS, ISORel, TxCheck, Fucci, Sedar），自动提取表级读写依赖 DAG 并执行事务原子块分治化简（DDMin），结合规范化 SHA-256 签名跨线程去重率高达 90%+，生成最小可复现脚本。
 * **已知缺陷智能旁路**：提供 `--bypass-boolean-test-range-bug` 开关，智能识别并静默过滤已提单的 3VL 常数折叠问题，避免已知 Bug 刷屏阻碍新 Bug 挖掘。
 
 ---

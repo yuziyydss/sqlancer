@@ -51,6 +51,11 @@ public final class GaussDBISORelReproducer implements Reproducer<GaussDBGlobalSt
         return bundle;
     }
 
+    public String getPiscoSignature() {
+        return GaussDBPiscoMinimizer.computeSignature("ISOREL_" + bundle.getMode(),
+                java.util.Collections.singletonList(bundle.getSetupSql()));
+    }
+
     public static List<String> executeAndGetRows(Statement statement, String sql) throws SQLException {
         List<String> rows = new ArrayList<>();
         try (ResultSet rs = statement.executeQuery(sql)) {

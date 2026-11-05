@@ -51,6 +51,15 @@ public final class GaussDBIVMReproducer implements Reproducer<GaussDBGlobalState
         return bundle;
     }
 
+    public String getPiscoSignature() {
+        List<String> trace = new ArrayList<>();
+        trace.add(bundle.getCreateMvSql());
+        trace.addAll(bundle.getDmlMutations());
+        trace.add(bundle.getRefreshSql());
+        trace.add(bundle.getMvQuery());
+        return GaussDBPiscoMinimizer.computeSignature("IVM_" + bundle.getMode(), trace);
+    }
+
     private static Map<String, Integer> toCountMap(List<String> list) {
         Map<String, Integer> map = new HashMap<>();
         for (String item : list) {

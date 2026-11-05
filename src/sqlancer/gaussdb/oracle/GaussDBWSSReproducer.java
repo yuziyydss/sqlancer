@@ -171,4 +171,13 @@ public final class GaussDBWSSReproducer implements Reproducer<GaussDBGlobalState
     public String getCleanupSql() {
         return cleanupSql;
     }
+
+    public String getPiscoSignature() {
+        List<String> trace = new ArrayList<>();
+        trace.add(setupSql);
+        trace.addAll(tx1Sql);
+        trace.addAll(tx2Sql);
+        trace.add(checkSql);
+        return GaussDBPiscoMinimizer.computeSignature("WSS_" + isolationLevel, trace);
+    }
 }

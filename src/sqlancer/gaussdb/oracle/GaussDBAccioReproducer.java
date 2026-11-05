@@ -66,4 +66,10 @@ public final class GaussDBAccioReproducer implements Reproducer<GaussDBGlobalSta
     public AccioBundle getBundle() {
         return bundle;
     }
+
+    public String getPiscoSignature() {
+        List<String> trace = new ArrayList<>(bundle.getSetupStatements());
+        trace.add(bundle.getTestQuery());
+        return GaussDBPiscoMinimizer.computeSignature("ACCIO_" + bundle.getMode(), trace);
+    }
 }
