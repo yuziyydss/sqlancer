@@ -47,6 +47,7 @@
 | **SEDAR** (并发调度与时序抖动) | IEEE TSE 2024 | 引入动态线程时序扰动延迟（$\Delta t \in \{0, 10\text{ms}, 50\text{ms}, 100\text{ms}\}$），专攻多行转账与记账一致性守恒（$\sum \text{balance} = \text{const}$）。 |
 | **DISTSQL** (集中式 vs 分布式双模差分) | SIGMOD 2026 | 比对单节点串行计划与多分片分布式流式计划（Two-Phase Partial/Final Aggregation, Stream Redistribute/Broadcast Join, SMP query_dop &gt; 1）的结果集一致性，捕获分布式网络分发与跨节点数据丢失。 |
 | **IVM** (物化视图与增量刷新一致性) | VLDB / SIGMOD 2025 | 灵感源自 BuzzHouse / IVM Testing，针对物化视图及其增量更新机制，在交织 DML 变更与 REFRESH 后检验物化视图物理元组多重集与直接执行基表子查询的精准等价性及外层谓词下推守恒。 |
+| **ACCIO** (权限提升与行级安全检测) | CCS 2026 / OOPSLA 2026 | 灵感源自 Accio 与 Beacon，针对金融政企级 RBAC 表级/列级访问控制与行级安全策略（Row-Level Security, RLS），在受限 Role 下检验越权读访问与 RLS 谓词过滤保真度，专攻 CVE 级高危越权漏洞。 |
 | **EPSC** (等价计划状态检验) | SIGMOD 2020 | 事务与会话状态转换一致性探测。 |
 
 ### 2. GaussDB 企业级特性专属支持
@@ -79,7 +80,7 @@ mvn package -DskipTests
 
 ### 2. 运行测试
 
-#### 场景 A：全量 31-Oracle 综合压测（推荐）
+#### 场景 A：全量 32-Oracle 综合压测（推荐）
 ```bash
 java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --username sqlancer \
@@ -92,7 +93,7 @@ java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --num-tries 10000 \
   --print-progress-summary true \
   gaussdb \
-  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ,SRS,ARG,CERT,DDLCHECK,EDC,WSS,JIT,BOUNDARY,VALSCOPE,PLSQL,PINOLO,JIR,SCOR,PUPPY,DDLUMOS,SQLASER,ISOREL,TXCHECK,FUCCI,SEDAR,DISTSQL,IVM \
+  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ,SRS,ARG,CERT,DDLCHECK,EDC,WSS,JIT,BOUNDARY,VALSCOPE,PLSQL,PINOLO,JIR,SCOR,PUPPY,DDLUMOS,SQLASER,ISOREL,TXCHECK,FUCCI,SEDAR,DISTSQL,IVM,ACCIO \
   --bypass-boolean-test-range-bug true
 ```
 
