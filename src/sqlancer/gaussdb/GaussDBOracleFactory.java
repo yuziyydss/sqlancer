@@ -11,6 +11,8 @@ import sqlancer.gaussdb.oracle.GaussDBCODDTestOracle;
 import sqlancer.gaussdb.oracle.GaussDBDDLCheckOracle;
 import sqlancer.gaussdb.oracle.GaussDBDDLumosOracle;
 import sqlancer.gaussdb.oracle.GaussDBEDCOracle;
+import sqlancer.gaussdb.oracle.GaussDBFucciOracle;
+import sqlancer.gaussdb.oracle.GaussDBISORelOracle;
 import sqlancer.gaussdb.oracle.GaussDBJITOracle;
 import sqlancer.gaussdb.oracle.GaussDBJIROracle;
 import sqlancer.gaussdb.oracle.GaussDBPLSQLOracle;
@@ -18,6 +20,8 @@ import sqlancer.gaussdb.oracle.GaussDBPinoloOracle;
 import sqlancer.gaussdb.oracle.GaussDBPuppyOracle;
 import sqlancer.gaussdb.oracle.GaussDBSCorOracle;
 import sqlancer.gaussdb.oracle.GaussDBSQLaserOracle;
+import sqlancer.gaussdb.oracle.GaussDBSedarOracle;
+import sqlancer.gaussdb.oracle.GaussDBTxCheckOracle;
 import sqlancer.gaussdb.oracle.GaussDBValScopeOracle;
 import sqlancer.gaussdb.oracle.GaussDBWSSOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQEOracle;
@@ -209,6 +213,34 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBSQLaserOracle(globalState);
+        }
+    },
+
+    ISOREL {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBISORelOracle(globalState);
+        }
+    },
+
+    TXCHECK {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBTxCheckOracle(globalState);
+        }
+    },
+
+    FUCCI {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBFucciOracle(globalState);
+        }
+    },
+
+    SEDAR {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBSedarOracle(globalState);
         }
     }
 

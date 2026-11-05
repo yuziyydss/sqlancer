@@ -7,15 +7,15 @@
 
 **SQLancer** 是用于自动化测试数据库管理系统（DBMS）并挖掘其内核实现缺陷的顶级模糊测试工具。与传统的语法测试工具不同，SQLancer 的核心目标是发现数据库内核自身的代码逻辑缺陷（如优化器算错、执行器漏查数据、规划器崩溃、类型转换异常等）。
 
-本仓库为针对 **华为 GaussDB (GaussDB Kernel 507.0.0+)** 进行深度定制的专用版本，支持 Oracle 兼容模式、ASTORE/USTORE/CSTORE 三存储引擎、跨分区行迁移、SMP 并行计算、并发事务隔离性验证以及包含 **25 大国际顶会变异测试机（Oracles）** 的全量测试矩阵。
+本仓库为针对 **华为 GaussDB (GaussDB Kernel 507.0.0+)** 进行深度定制的专用版本，支持 Oracle 兼容模式、ASTORE/USTORE/CSTORE 三存储引擎、跨分区行迁移、SMP 并行计算、并发事务隔离性验证以及包含 **29 大国际顶会变异测试机（Oracles）** 的全量测试矩阵。
 
 ---
 
 ## 核心特性与学术成果
 
-本分支融合了学术界顶会论文成果（POPL、OOPSLA、SIGMOD、VLDB、ICSE、ASE、USENIX ATC 等），并针对 GaussDB 的企业级架构进行了专有增强：
+本分支融合了学术界顶会论文成果（POPL、OOPSLA、SIGMOD、VLDB、ICSE、ASE、USENIX ATC、ISSTA、OSDI 等），并针对 GaussDB 的企业级架构进行了专有增强：
 
-### 1. 全量 25-Oracle 综合测试矩阵
+### 1. 全量 29-Oracle 综合测试矩阵
 | 测试机 (Oracle) | 对应学术论文 | 检测机理与核心优势 |
 | :--- | :--- | :--- |
 | **CODDTest** | SIGMOD 2025 | 基于关系完备性与会话级常数优化驱动测试，擅长挖掘复杂标量子查询提升与唯一性消除缺陷。 |
@@ -41,6 +41,10 @@
 | **PUPPY** (约束优化空间探索) | ICSE 2025 | 强制调控并关闭特定物理算子（HashJoin, MergeJoin, SeqScan, IndexScan, Materialize），比对不同执行路径的结果集一致性，捕获代价模型倒挂与隐藏算子 Bug。 |
 | **DDLUMOS** (事务性 DDL 回滚保真) | USENIX ATC 2024 | 针对 GaussDB 特有的事务性 DDL 能力，在事务中交织执行 DDL 与 DML 并执行 ROLLBACK，验证数据元组与系统目录（pg_class/pg_attribute）无损还原。 |
 | **SQLASER** (复杂子句链式组合) | USENIX Sec / arXiv | 针对高阶复杂 SQL 子句链（Grouping Sets, Rollup, Window Frames, CTEs），验证高维聚合与阶梯式分解执行的等价性，专攻执行器内存溢出与分组展开缺陷。 |
+| **ISOREL** (关系感知隔离性检测) | ISSTA 2025 | 系统化探测 ANSI/GaussDB 隔离级别（RC/RR/Serializable）下的不可重复读（P2）、幻读（P3）与写偏斜（A5B），专攻快照隔离泄漏与多版本读穿透。 |
+| **TXCHECK** (依赖图环路冲突分析) | OSDI 2023 | 构建多事务读写直接依赖有向图（Direct Dependency Graph, DDG），检测 $rw \to rw$ 成环与因果读偏斜，验证可串行化快照（SSI）锁管理正确性。 |
+| **FUCCI** (冲突不变量引导测试) | VLDB 2025 | 基于细粒度行级锁与屏障步进同步，验证排他更新锁在 COMMIT 与 ROLLBACK 下的严格状态守恒，捕获并发更新锁丢失与未提交脏写。 |
+| **SEDAR** (并发调度与时序抖动) | IEEE TSE 2024 | 引入动态线程时序扰动延迟（$\Delta t \in \{0, 10\text{ms}, 50\text{ms}, 100\text{ms}\}$），专攻多行转账与记账一致性守恒（$\sum \text{balance} = \text{const}$）。 |
 | **EPSC** (等价计划状态检验) | SIGMOD 2020 | 事务与会话状态转换一致性探测。 |
 
 ### 2. GaussDB 企业级特性专属支持
@@ -86,7 +90,7 @@ java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --num-tries 10000 \
   --print-progress-summary true \
   gaussdb \
-  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ,SRS,ARG,CERT,DDLCHECK,EDC,WSS,JIT,BOUNDARY,VALSCOPE,PLSQL,PINOLO,JIR,SCOR,PUPPY,DDLUMOS,SQLASER \
+  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ,SRS,ARG,CERT,DDLCHECK,EDC,WSS,JIT,BOUNDARY,VALSCOPE,PLSQL,PINOLO,JIR,SCOR,PUPPY,DDLUMOS,SQLASER,ISOREL,TXCHECK,FUCCI,SEDAR \
   --bypass-boolean-test-range-bug true
 ```
 
