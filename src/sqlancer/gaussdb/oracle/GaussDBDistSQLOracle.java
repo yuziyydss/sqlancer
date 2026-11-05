@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 import sqlancer.IgnoreMeException;
@@ -42,6 +43,11 @@ import sqlancer.gaussdb.gen.GaussDBExpressionGenerator;
  * </p>
  */
 public class GaussDBDistSQLOracle implements TestOracle<GaussDBGlobalState> {
+
+    public static final List<String> DISTSQL_RESET_GUC_COMMANDS = Collections.unmodifiableList(Arrays.asList(
+            "RESET query_dop;",
+            "RESET enable_fast_query_shipping;"
+    ));
 
     private final GaussDBGlobalState state;
     private final ExpectedErrors errors = new ExpectedErrors();
@@ -170,7 +176,7 @@ public class GaussDBDistSQLOracle implements TestOracle<GaussDBGlobalState> {
 
         try (Statement statement = connection.createStatement()) {
             // 1. Run Centralized Mode
-            statement.execute("RESET ALL;");
+            resetDistSQLGucs(statement);
             for (String guc : centralizedGucs) {
                 try {
                     statement.execute(guc);
@@ -180,7 +186,7 @@ public class GaussDBDistSQLOracle implements TestOracle<GaussDBGlobalState> {
             List<String> centralizedRows = executeAndGetRows(statement, query);
 
             // 2. Run Distributed / SMP Stream Mode
-            statement.execute("RESET ALL;");
+            resetDistSQLGucs(statement);
             for (String guc : distributedGucs) {
                 try {
                     statement.execute(guc);
@@ -190,13 +196,13 @@ public class GaussDBDistSQLOracle implements TestOracle<GaussDBGlobalState> {
             List<String> distributedRows = executeAndGetRows(statement, query);
 
             // 3. Reset GUCs to prevent polluting subsequent tests
-            statement.execute("RESET ALL;");
+            resetDistSQLGucs(statement);
 
             try {
                 verifyDistSQLInvariants(bundle, centralizedRows, distributedRows);
             } catch (AssertionError e) {
                 // Retry once to eliminate transient timing
-                statement.execute("RESET ALL;");
+                resetDistSQLGucs(statement);
                 for (String guc : centralizedGucs) {
                     try {
                         statement.execute(guc);
@@ -205,7 +211,7 @@ public class GaussDBDistSQLOracle implements TestOracle<GaussDBGlobalState> {
                 }
                 centralizedRows = executeAndGetRows(statement, query);
 
-                statement.execute("RESET ALL;");
+                resetDistSQLGucs(statement);
                 for (String guc : distributedGucs) {
                     try {
                         statement.execute(guc);
@@ -213,7 +219,7 @@ public class GaussDBDistSQLOracle implements TestOracle<GaussDBGlobalState> {
                     }
                 }
                 distributedRows = executeAndGetRows(statement, query);
-                statement.execute("RESET ALL;");
+                resetDistSQLGucs(statement);
 
                 try {
                     verifyDistSQLInvariants(bundle, centralizedRows, distributedRows);
@@ -224,7 +230,7 @@ public class GaussDBDistSQLOracle implements TestOracle<GaussDBGlobalState> {
             }
         } catch (SQLException e) {
             try (Statement resetStmt = connection.createStatement()) {
-                resetStmt.execute("RESET ALL;");
+                resetDistSQLGucs(resetStmt);
             } catch (Exception ignored) {
             }
             if (errors.errorIsExpected(e.getMessage())) {
@@ -269,6 +275,12 @@ public class GaussDBDistSQLOracle implements TestOracle<GaussDBGlobalState> {
             }
         }
         return rows;
+    }
+
+    static void resetDistSQLGucs(Statement statement) throws SQLException {
+        for (String resetCommand : DISTSQL_RESET_GUC_COMMANDS) {
+            statement.execute(resetCommand);
+        }
     }
 
     @Override

@@ -23,14 +23,14 @@ public final class GaussDBPuppyReproducer implements Reproducer<GaussDBGlobalSta
     @Override
     public boolean bugStillTriggers(GaussDBGlobalState globalState) {
         try (Statement statement = globalState.getConnection().createStatement()) {
-            statement.execute("RESET ALL;");
+            GaussDBPuppyOracle.resetPuppyGucs(statement);
             List<String> defaultRows = executeAndGetRows(statement, bundle.getQuery());
 
             for (String gucCommand : bundle.getGucCommands()) {
                 statement.execute(gucCommand);
             }
             List<String> constrainedRows = executeAndGetRows(statement, bundle.getQuery());
-            statement.execute("RESET ALL;");
+            GaussDBPuppyOracle.resetPuppyGucs(statement);
 
             Set<String> s1 = new HashSet<>(defaultRows);
             Set<String> s2 = new HashSet<>(constrainedRows);

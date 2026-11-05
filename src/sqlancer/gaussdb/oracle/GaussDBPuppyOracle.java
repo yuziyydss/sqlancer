@@ -39,6 +39,16 @@ import sqlancer.gaussdb.gen.GaussDBExpressionGenerator;
  */
 public class GaussDBPuppyOracle implements TestOracle<GaussDBGlobalState> {
 
+    public static final List<String> PUPPY_RESET_GUC_COMMANDS = Collections.unmodifiableList(Arrays.asList(
+            "RESET enable_hashjoin;",
+            "RESET enable_mergejoin;",
+            "RESET enable_seqscan;",
+            "RESET enable_indexscan;",
+            "RESET enable_bitmapscan;",
+            "RESET enable_material;",
+            "RESET enable_sort;"
+    ));
+
     private final GaussDBGlobalState state;
     private final ExpectedErrors errors = new ExpectedErrors();
     private GaussDBPuppyReproducer reproducer;
@@ -110,12 +120,16 @@ public class GaussDBPuppyOracle implements TestOracle<GaussDBGlobalState> {
         GaussDBColumn colA = Randomly.fromList(tableA.getColumns());
         GaussDBColumn colB = Randomly.fromList(tableB.getColumns());
 
+        boolean joinQuery = Randomly.getBoolean();
         GaussDBExpressionGenerator gen = new GaussDBExpressionGenerator(state).setColumns(tableA.getColumns());
+        if (joinQuery) {
+            gen.setTableAlias("a");
+        }
         GaussDBExpression whereExpr = gen.generatePredicate();
         String whereSql = GaussDBToStringVisitor.asString(whereExpr);
 
         String query;
-        if (Randomly.getBoolean()) {
+        if (joinQuery) {
             // Multi-table Join query
             query = "SELECT DISTINCT a." + colA.getName() + ", b." + colB.getName() + " FROM " + tableA.getName()
                     + " a JOIN " + tableB.getName() + " b ON a." + colA.getName() + " = b." + colB.getName()
@@ -133,7 +147,7 @@ public class GaussDBPuppyOracle implements TestOracle<GaussDBGlobalState> {
         SQLConnection connection = state.getConnection();
         try (Statement statement = connection.createStatement()) {
             // 1. Run baseline under default GUCs
-            statement.execute("RESET ALL;");
+            resetPuppyGucs(statement);
             List<String> defaultRows = executeAndGetRows(statement, query);
 
             // 2. Run under constrained GUCs
@@ -143,19 +157,19 @@ public class GaussDBPuppyOracle implements TestOracle<GaussDBGlobalState> {
             List<String> constrainedRows = executeAndGetRows(statement, query);
 
             // 3. Reset GUCs immediately
-            statement.execute("RESET ALL;");
+            resetPuppyGucs(statement);
 
             try {
                 verifyPuppyInvariants(bundle, defaultRows, constrainedRows);
             } catch (AssertionError e) {
                 // Retry once to eliminate transient timing differences
-                statement.execute("RESET ALL;");
+                resetPuppyGucs(statement);
                 defaultRows = executeAndGetRows(statement, query);
                 for (String guc : bundle.getGucCommands()) {
                     statement.execute(guc);
                 }
                 constrainedRows = executeAndGetRows(statement, query);
-                statement.execute("RESET ALL;");
+                resetPuppyGucs(statement);
                 try {
                     verifyPuppyInvariants(bundle, defaultRows, constrainedRows);
                 } catch (AssertionError ex) {
@@ -165,7 +179,7 @@ public class GaussDBPuppyOracle implements TestOracle<GaussDBGlobalState> {
             }
         } catch (SQLException e) {
             try (Statement resetStmt = connection.createStatement()) {
-                resetStmt.execute("RESET ALL;");
+                resetPuppyGucs(resetStmt);
             } catch (Exception ignored) {
             }
             if (errors.errorIsExpected(e.getMessage())) {
@@ -200,6 +214,12 @@ public class GaussDBPuppyOracle implements TestOracle<GaussDBGlobalState> {
             }
         }
         return rows;
+    }
+
+    static void resetPuppyGucs(Statement statement) throws SQLException {
+        for (String resetCommand : PUPPY_RESET_GUC_COMMANDS) {
+            statement.execute(resetCommand);
+        }
     }
 
     @Override

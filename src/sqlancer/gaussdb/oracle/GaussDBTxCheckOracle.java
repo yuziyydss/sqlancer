@@ -121,6 +121,7 @@ public class GaussDBTxCheckOracle implements TestOracle<GaussDBGlobalState> {
             String pass = state.getOptions() != null ? state.getOptions().getPassword() : null;
             con2 = (user != null && pass != null) ? DriverManager.getConnection(url, user, pass)
                     : DriverManager.getConnection(url);
+            copyCurrentSchema(con1, con2);
 
             try {
                 runTxCheckSchedule(bundle, con1, con2);
@@ -283,6 +284,19 @@ public class GaussDBTxCheckOracle implements TestOracle<GaussDBGlobalState> {
             }
         }
         return rows;
+    }
+
+    private static void copyCurrentSchema(Connection source, Connection target) throws SQLException {
+        String schema;
+        try (Statement statement = source.createStatement();
+                ResultSet resultSet = statement.executeQuery("SELECT current_schema()")) {
+            schema = resultSet.next() ? resultSet.getString(1) : null;
+        }
+        if (schema != null && !schema.isEmpty()) {
+            try (Statement statement = target.createStatement()) {
+                statement.execute("SET search_path TO \"" + schema.replace("\"", "\"\"") + "\"");
+            }
+        }
     }
 
     @Override

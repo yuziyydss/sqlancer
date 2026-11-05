@@ -24,19 +24,19 @@ public final class GaussDBDistSQLReproducer implements Reproducer<GaussDBGlobalS
     public boolean bugStillTriggers(GaussDBGlobalState globalState) {
         try (Statement statement = globalState.getConnection().createStatement()) {
             // 1. Execute Centralized Plan
-            statement.execute("RESET ALL;");
+            GaussDBDistSQLOracle.resetDistSQLGucs(statement);
             for (String guc : bundle.getCentralizedGucs()) {
                 statement.execute(guc);
             }
             List<String> centralizedRows = executeAndGetRows(statement, bundle.getQuery());
 
             // 2. Execute Distributed Stream Plan
-            statement.execute("RESET ALL;");
+            GaussDBDistSQLOracle.resetDistSQLGucs(statement);
             for (String guc : bundle.getDistributedGucs()) {
                 statement.execute(guc);
             }
             List<String> distributedRows = executeAndGetRows(statement, bundle.getQuery());
-            statement.execute("RESET ALL;");
+            GaussDBDistSQLOracle.resetDistSQLGucs(statement);
 
             Map<String, Integer> m1 = toCountMap(centralizedRows);
             Map<String, Integer> m2 = toCountMap(distributedRows);

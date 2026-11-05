@@ -135,12 +135,12 @@ public class GaussDBValScopeOracle implements TestOracle<GaussDBGlobalState> {
         String tbl = table.getName();
 
         String baseQuery = String.format(
-                "SELECT COUNT(*), COALESCE(SUM(%s), 0), COALESCE(AVG(%s), 0), COALESCE(MIN(%s), 0), COALESCE(MAX(%s), 0) FROM %s %s WHERE %s",
-                colName, colName, colName, colName, tbl, TABLE_ALIAS, predStr);
+                "SELECT COUNT(%s), COALESCE(SUM(%s), 0), COALESCE(AVG(%s), 0), COALESCE(MIN(%s), 0), COALESCE(MAX(%s), 0) FROM %s %s WHERE %s",
+                colName, colName, colName, colName, colName, tbl, TABLE_ALIAS, predStr);
 
         String perturbedQuery = String.format(
-                "SELECT COUNT(*), COALESCE(SUM(%s + (%d)), 0), COALESCE(AVG(%s + (%d)), 0), COALESCE(MIN(%s + (%d)), 0), COALESCE(MAX(%s + (%d)), 0) FROM %s %s WHERE %s",
-                colName, shiftK, colName, shiftK, colName, shiftK, colName, shiftK, tbl, TABLE_ALIAS, predStr);
+                "SELECT COUNT(%s), COALESCE(SUM(%s + (%d)), 0), COALESCE(AVG(%s + (%d)), 0), COALESCE(MIN(%s + (%d)), 0), COALESCE(MAX(%s + (%d)), 0) FROM %s %s WHERE %s",
+                colName, colName, shiftK, colName, shiftK, colName, shiftK, colName, shiftK, tbl, TABLE_ALIAS, predStr);
 
         return new ValScopeBundle(ValScopeMode.AGGREGATE_PERTURBATION, baseQuery, perturbedQuery, shiftK);
     }

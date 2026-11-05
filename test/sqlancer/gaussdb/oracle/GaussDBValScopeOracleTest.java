@@ -32,7 +32,7 @@ class GaussDBValScopeOracleTest {
         assertNotNull(aggBundle);
         assertEquals(ValScopeMode.AGGREGATE_PERTURBATION, aggBundle.getMode());
         assertEquals(10, aggBundle.getShiftK());
-        assertTrue(aggBundle.getBaseQuery().contains("SELECT COUNT(*), COALESCE(SUM(c0), 0)"));
+        assertTrue(aggBundle.getBaseQuery().contains("SELECT COUNT(c0), COALESCE(SUM(c0), 0)"));
         assertTrue(aggBundle.getPerturbedQuery().contains("c0 + (10)"));
 
         ValScopeBundle winBundle = GaussDBValScopeOracle.buildWindowMonotonicityBundle(

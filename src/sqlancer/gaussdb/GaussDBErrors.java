@@ -20,7 +20,8 @@ public final class GaussDBErrors {
         errors.add("The input syntax of type");
         errors.add("invalid regular expression");
         errors.add("negative substring length not allowed");
-        errors.add("out of range");
+        errors.addRegexString("(?i)out of (?:the )?range");
+        errors.addRegexString("(?i)cannot convert (?:Infinity|NaN) to (?:numeric|bigint)");
         errors.add("value too long");
         errors.add("cannot cast");
         errors.add("fail to update partitioned table");

@@ -2,6 +2,7 @@ package sqlancer.gaussdb.oracle;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -63,6 +64,16 @@ class GaussDBDistSQLOracleTest {
         List<String> r2 = Arrays.asList("[1, 10, 1]", "[2, 20, 1]");
 
         assertDoesNotThrow(() -> GaussDBDistSQLOracle.verifyDistSQLInvariants(bundle, r1, r2));
+    }
+
+    @Test
+    void testDistSQLResetCommandsAreTargeted() {
+        List<String> expected = Arrays.asList(
+                "RESET query_dop;",
+                "RESET enable_fast_query_shipping;");
+
+        assertEquals(expected, GaussDBDistSQLOracle.DISTSQL_RESET_GUC_COMMANDS);
+        assertFalse(GaussDBDistSQLOracle.DISTSQL_RESET_GUC_COMMANDS.contains("RESET ALL;"));
     }
 
 }
