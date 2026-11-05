@@ -46,6 +46,7 @@
 | **FUCCI** (冲突不变量引导测试) | VLDB 2025 | 基于细粒度行级锁与屏障步进同步，验证排他更新锁在 COMMIT 与 ROLLBACK 下的严格状态守恒，捕获并发更新锁丢失与未提交脏写。 |
 | **SEDAR** (并发调度与时序抖动) | IEEE TSE 2024 | 引入动态线程时序扰动延迟（$\Delta t \in \{0, 10\text{ms}, 50\text{ms}, 100\text{ms}\}$），专攻多行转账与记账一致性守恒（$\sum \text{balance} = \text{const}$）。 |
 | **DISTSQL** (集中式 vs 分布式双模差分) | SIGMOD 2026 | 比对单节点串行计划与多分片分布式流式计划（Two-Phase Partial/Final Aggregation, Stream Redistribute/Broadcast Join, SMP query_dop &gt; 1）的结果集一致性，捕获分布式网络分发与跨节点数据丢失。 |
+| **IVM** (物化视图与增量刷新一致性) | VLDB / SIGMOD 2025 | 灵感源自 BuzzHouse / IVM Testing，针对物化视图及其增量更新机制，在交织 DML 变更与 REFRESH 后检验物化视图物理元组多重集与直接执行基表子查询的精准等价性及外层谓词下推守恒。 |
 | **EPSC** (等价计划状态检验) | SIGMOD 2020 | 事务与会话状态转换一致性探测。 |
 
 ### 2. GaussDB 企业级特性专属支持
@@ -78,7 +79,7 @@ mvn package -DskipTests
 
 ### 2. 运行测试
 
-#### 场景 A：全量 19-Oracle 综合压测（推荐）
+#### 场景 A：全量 31-Oracle 综合压测（推荐）
 ```bash
 java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --username sqlancer \
@@ -91,7 +92,7 @@ java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --num-tries 10000 \
   --print-progress-summary true \
   gaussdb \
-  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ,SRS,ARG,CERT,DDLCHECK,EDC,WSS,JIT,BOUNDARY,VALSCOPE,PLSQL,PINOLO,JIR,SCOR,PUPPY,DDLUMOS,SQLASER,ISOREL,TXCHECK,FUCCI,SEDAR,DISTSQL \
+  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ,SRS,ARG,CERT,DDLCHECK,EDC,WSS,JIT,BOUNDARY,VALSCOPE,PLSQL,PINOLO,JIR,SCOR,PUPPY,DDLUMOS,SQLASER,ISOREL,TXCHECK,FUCCI,SEDAR,DISTSQL,IVM \
   --bypass-boolean-test-range-bug true
 ```
 

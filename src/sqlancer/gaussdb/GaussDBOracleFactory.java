@@ -14,6 +14,7 @@ import sqlancer.gaussdb.oracle.GaussDBDistSQLOracle;
 import sqlancer.gaussdb.oracle.GaussDBEDCOracle;
 import sqlancer.gaussdb.oracle.GaussDBFucciOracle;
 import sqlancer.gaussdb.oracle.GaussDBISORelOracle;
+import sqlancer.gaussdb.oracle.GaussDBIVMOracle;
 import sqlancer.gaussdb.oracle.GaussDBJITOracle;
 import sqlancer.gaussdb.oracle.GaussDBJIROracle;
 import sqlancer.gaussdb.oracle.GaussDBPLSQLOracle;
@@ -249,6 +250,13 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBDistSQLOracle(globalState);
+        }
+    },
+
+    IVM {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBIVMOracle(globalState);
         }
     }
 
