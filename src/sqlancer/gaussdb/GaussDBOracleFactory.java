@@ -11,6 +11,8 @@ import sqlancer.gaussdb.oracle.GaussDBCODDTestOracle;
 import sqlancer.gaussdb.oracle.GaussDBDDLCheckOracle;
 import sqlancer.gaussdb.oracle.GaussDBEDCOracle;
 import sqlancer.gaussdb.oracle.GaussDBJITOracle;
+import sqlancer.gaussdb.oracle.GaussDBPLSQLOracle;
+import sqlancer.gaussdb.oracle.GaussDBValScopeOracle;
 import sqlancer.gaussdb.oracle.GaussDBWSSOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQEOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQPOracle;
@@ -145,6 +147,20 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBBoundaryOracle(globalState);
+        }
+    },
+
+    VALSCOPE {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBValScopeOracle(globalState);
+        }
+    },
+
+    PLSQL {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBPLSQLOracle(globalState);
         }
     }
 
