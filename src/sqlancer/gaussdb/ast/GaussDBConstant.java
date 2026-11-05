@@ -54,6 +54,10 @@ public abstract class GaussDBConstant implements GaussDBExpression {
         return new IntervalConstant(value);
     }
 
+    public static GaussDBConstant createRawConstant(String rawText, GaussDBDataType type) {
+        return new RawConstant(rawText, type);
+    }
+
     public abstract String getTextRepresentation();
 
     public boolean isNull() {
@@ -308,6 +312,28 @@ public abstract class GaussDBConstant implements GaussDBExpression {
         @Override
         public GaussDBDataType getExpressionType() {
             return GaussDBDataType.INTERVAL;
+        }
+
+    }
+
+    public static class RawConstant extends GaussDBConstant {
+
+        private final String rawText;
+        private final GaussDBDataType type;
+
+        public RawConstant(String rawText, GaussDBDataType type) {
+            this.rawText = rawText;
+            this.type = type;
+        }
+
+        @Override
+        public String getTextRepresentation() {
+            return rawText;
+        }
+
+        @Override
+        public GaussDBDataType getExpressionType() {
+            return type;
         }
 
     }

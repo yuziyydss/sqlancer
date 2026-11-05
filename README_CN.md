@@ -15,7 +15,7 @@
 
 本分支融合了学术界顶会论文成果（POPL、OOPSLA、SIGMOD、VLDB、ICSE、ASE 等），并针对 GaussDB 的企业级架构进行了专有增强：
 
-### 1. 全量 15-Oracle 综合测试矩阵
+### 1. 全量 17-Oracle 综合测试矩阵
 | 测试机 (Oracle) | 对应学术论文 | 检测机理与核心优势 |
 | :--- | :--- | :--- |
 | **CODDTest** | SIGMOD 2025 | 基于关系完备性与会话级常数优化驱动测试，擅长挖掘复杂标量子查询提升与唯一性消除缺陷。 |
@@ -31,6 +31,8 @@
 | **DDLCheck** (等价模式演化) | VLDB 2025 | 对比经过动态 DDL 演化（ALTER TABLE ADD/DROP/RENAME COLUMN, INDEX, VACUUM）的表与直接静态建表的物理行解码与系统缓存一致性。 |
 | **EDC** (等价数据变换域移) | SIGMOD 2026 | 基于仿射数据变换（$x' = x + K$）验证谓词选择率同构与聚集同态，捕获数值算术溢出与 B-Tree 边界扫描缺陷。 |
 | **WSS** (写专有可串行化并发) | VLDB 2025 | 双线程并发事务在共享行上执行非对易更新，验证可串行化与可重复读隔离级别下的最终状态等价性，捕获丢失更新与脏写异常。 |
+| **JIT** (LLVM编译差分测试) | SIGMOD / VLDB 体系 | 强制比对同一查询在解释执行 (`SET jit = off`) 与全量 LLVM JIT 动态编译 (`SET jit = on, jit_above_cost = 0`) 下的结果，专攻汇编指令生成与寄存器溢出。 |
+| **BOUNDARY** (函数极值边界测试) | EuroSys 2025 | 针对 GaussDB A 模式独有的数百个 Oracle 兼容函数，系统化注入 NaN、-0.0、INT_MIN/MAX、空串与格式掩码等极值参数，检验内核鲁棒性与异常规约。 |
 | **EPSC** (等价计划状态检验) | SIGMOD 2020 | 事务与会话状态转换一致性探测。 |
 
 ### 2. GaussDB 企业级特性专属支持
@@ -63,7 +65,7 @@ mvn package -DskipTests
 
 ### 2. 运行测试
 
-#### 场景 A：全量 11-Oracle 综合压测（推荐）
+#### 场景 A：全量 17-Oracle 综合压测（推荐）
 ```bash
 java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --username sqlancer \
@@ -76,7 +78,7 @@ java -Xmx4096m -jar target/sqlancer-2.0.0.jar \
   --num-tries 10000 \
   --print-progress-summary true \
   gaussdb \
-  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ,SRS,ARG \
+  --oracle EET,CODDTEST,DQP,DQE,THANOS,EPSC,TLP,NOREC,ERIQ,SRS,ARG,CERT,DDLCHECK,EDC,WSS,JIT,BOUNDARY \
   --bypass-boolean-test-range-bug true
 ```
 

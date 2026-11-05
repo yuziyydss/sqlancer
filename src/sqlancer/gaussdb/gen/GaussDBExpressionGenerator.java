@@ -445,6 +445,9 @@ public final class GaussDBExpressionGenerator
     }
 
     public static GaussDBExpression generateConstant(Randomly r, GaussDBDataType type) {
+        if (Randomly.getBooleanWithSmallProbability()) {
+            return GaussDBBoundaryHelper.generateBoundaryConstant(r, type);
+        }
         switch (type) {
         case INT:
             return GaussDBConstant.createIntConstant(r.getInteger(-1000, 1000));

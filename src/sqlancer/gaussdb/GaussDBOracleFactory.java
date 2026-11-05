@@ -5,10 +5,12 @@ import java.sql.SQLException;
 import sqlancer.OracleFactory;
 import sqlancer.common.oracle.TestOracle;
 import sqlancer.gaussdb.oracle.GaussDBARGOracle;
+import sqlancer.gaussdb.oracle.GaussDBBoundaryOracle;
 import sqlancer.gaussdb.oracle.GaussDBCERTOracle;
 import sqlancer.gaussdb.oracle.GaussDBCODDTestOracle;
 import sqlancer.gaussdb.oracle.GaussDBDDLCheckOracle;
 import sqlancer.gaussdb.oracle.GaussDBEDCOracle;
+import sqlancer.gaussdb.oracle.GaussDBJITOracle;
 import sqlancer.gaussdb.oracle.GaussDBWSSOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQEOracle;
 import sqlancer.gaussdb.oracle.GaussDBDQPOracle;
@@ -129,6 +131,20 @@ public enum GaussDBOracleFactory implements OracleFactory<GaussDBGlobalState> {
         @Override
         public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
             return new GaussDBWSSOracle(globalState);
+        }
+    },
+
+    JIT {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBJITOracle(globalState);
+        }
+    },
+
+    BOUNDARY {
+        @Override
+        public TestOracle<GaussDBGlobalState> create(GaussDBGlobalState globalState) throws SQLException {
+            return new GaussDBBoundaryOracle(globalState);
         }
     }
 
