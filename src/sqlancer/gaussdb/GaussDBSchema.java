@@ -90,32 +90,68 @@ public class GaussDBSchema extends AbstractSchema<GaussDBGlobalState, GaussDBTab
     }
 
     private static GaussDBDataType getColumnType(String dataType) {
-        switch (dataType) {
+        if (dataType == null) {
+            throw new IgnoreMeException();
+        }
+        String lower = dataType.trim().toLowerCase(java.util.Locale.ROOT);
+        switch (lower) {
         case "smallint":
         case "integer":
         case "bigint":
+        case "tinyint":
+        case "mediumint":
+        case "int":
+        case "int2":
+        case "int4":
+        case "int8":
+        case "year":
             return GaussDBDataType.INT;
         case "boolean":
+        case "bool":
             return GaussDBDataType.BOOLEAN;
         case "character varying":
         case "character":
         case "text":
         case "name":
+        case "varchar":
+        case "char":
+        case "tinytext":
+        case "mediumtext":
+        case "longtext":
+        case "bytea":
+        case "blob":
+        case "tinyblob":
+        case "mediumblob":
+        case "longblob":
+        case "binary":
+        case "varbinary":
+        case "json":
+        case "jsonb":
+        case "uuid":
             return GaussDBDataType.TEXT;
         case "numeric":
+        case "decimal":
             return GaussDBDataType.DECIMAL;
         case "real":
+        case "float4":
             return GaussDBDataType.REAL;
         case "double precision":
+        case "double":
+        case "float":
+        case "float8":
             return GaussDBDataType.FLOAT;
         case "date":
         case "datea":
+        case "datetime":
             return GaussDBDataType.DATE;
         case "timestamp without time zone":
+        case "timestamp":
             return GaussDBDataType.TIMESTAMP;
         case "timestamp with time zone":
+        case "timestamptz":
             return GaussDBDataType.TIMESTAMPTZ;
         case "time without time zone":
+        case "time":
             return GaussDBDataType.TIME;
         case "interval":
             return GaussDBDataType.INTERVAL;

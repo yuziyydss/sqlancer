@@ -83,7 +83,7 @@ public class GaussDBBoundaryOracle implements TestOracle<GaussDBGlobalState> {
                 .collect(Collectors.toList());
 
         GaussDBExpression functionExpr = GaussDBBoundaryHelper.generateBoundaryFunction(
-                state.getRandomly(), returnType, candidateArgs);
+                state.getRandomly(), returnType, candidateArgs, state.getCompatibilityMode());
 
         GaussDBExpressionGenerator generator = new GaussDBExpressionGenerator(state);
         generator.setColumns(table.getColumns());

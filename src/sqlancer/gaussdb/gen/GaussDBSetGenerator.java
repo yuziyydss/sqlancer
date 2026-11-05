@@ -41,8 +41,11 @@ public final class GaussDBSetGenerator {
             } else {
                 boolean bypassKnownBugs = globalState.getDbmsSpecificOptions() == null
                         || globalState.getDbmsSpecificOptions().bypassBooleanTestRangeBug;
+                sqlancer.gaussdb.GaussDBOptions.CompatibilityMode mode = globalState.getCompatibilityMode();
                 List<String> rules = Randomly.nonEmptySubset(REWRITE_RULES).stream()
-                        .filter(r -> !bypassKnownBugs || !"cse_rewrite_opt".equals(r)).collect(Collectors.toList());
+                        .filter(r -> !bypassKnownBugs || !"cse_rewrite_opt".equals(r))
+                        .filter(r -> (mode == null || mode.isOracle()) || !"enable_sublink_pullup_rownum".equals(r))
+                        .collect(Collectors.toList());
                 if (rules.isEmpty()) {
                     sql = "SET rewrite_rule = 'none'";
                 } else {

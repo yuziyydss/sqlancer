@@ -96,114 +96,302 @@ public final class GaussDBBoundaryHelper {
 
     public static GaussDBExpression generateBoundaryFunction(Randomly r, GaussDBDataType returnType,
             List<GaussDBExpression> candidateExpressions) {
+        return generateBoundaryFunction(r, returnType, candidateExpressions, sqlancer.gaussdb.GaussDBOptions.CompatibilityMode.A);
+    }
+
+    public static GaussDBExpression generateBoundaryFunction(Randomly r, GaussDBDataType returnType,
+            List<GaussDBExpression> candidateExpressions, sqlancer.gaussdb.GaussDBOptions.CompatibilityMode mode) {
         List<GaussDBExpression> args = new ArrayList<>(candidateExpressions);
+        boolean isMySQL = mode != null && mode.isMySQL();
+        boolean isPG = mode != null && mode.isPostgres();
+
         switch (returnType) {
         case INT:
-            switch (r.getInteger(0, 7)) {
-            case 0:
-                return new GaussDBFunction("abs", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
-            case 1:
-                return new GaussDBFunction("sign", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
-            case 2:
-                return new GaussDBFunction("length", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
-            case 3:
-                return new GaussDBFunction("ascii", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
-            case 4:
-                return new GaussDBFunction("strpos",
-                        List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
-                        returnType);
-            case 5:
-                return new GaussDBFunction("bitand",
-                        List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
-                        returnType);
-            case 6:
-                return new GaussDBFunction("mod",
-                        List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
-                        returnType);
-            default:
-                return new GaussDBFunction("nvl",
-                        List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
-                        returnType);
+            if (isMySQL) {
+                switch (r.getInteger(0, 7)) {
+                case 0:
+                    return new GaussDBFunction("abs", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
+                case 1:
+                    return new GaussDBFunction("sign", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
+                case 2:
+                    return new GaussDBFunction("length", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 3:
+                    return new GaussDBFunction("ascii", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 4:
+                    return new GaussDBFunction("locate",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 5:
+                    return new GaussDBFunction("mod",
+                            List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
+                            returnType);
+                case 6:
+                    return new GaussDBFunction("ifnull",
+                            List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
+                            returnType);
+                default:
+                    return new GaussDBFunction("ceiling", List.of(ensureArg(r, args, GaussDBDataType.DECIMAL)), returnType);
+                }
+            } else if (isPG) {
+                switch (r.getInteger(0, 6)) {
+                case 0:
+                    return new GaussDBFunction("abs", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
+                case 1:
+                    return new GaussDBFunction("sign", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
+                case 2:
+                    return new GaussDBFunction("length", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 3:
+                    return new GaussDBFunction("ascii", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 4:
+                    return new GaussDBFunction("strpos",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 5:
+                    return new GaussDBFunction("mod",
+                            List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
+                            returnType);
+                default:
+                    return new GaussDBFunction("coalesce",
+                            List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
+                            returnType);
+                }
+            } else {
+                switch (r.getInteger(0, 7)) {
+                case 0:
+                    return new GaussDBFunction("abs", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
+                case 1:
+                    return new GaussDBFunction("sign", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
+                case 2:
+                    return new GaussDBFunction("length", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 3:
+                    return new GaussDBFunction("ascii", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 4:
+                    return new GaussDBFunction("strpos",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 5:
+                    return new GaussDBFunction("bitand",
+                            List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
+                            returnType);
+                case 6:
+                    return new GaussDBFunction("mod",
+                            List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
+                            returnType);
+                default:
+                    return new GaussDBFunction("nvl",
+                            List.of(ensureArg(r, args, GaussDBDataType.INT), ensureArg(r, args, GaussDBDataType.INT)),
+                            returnType);
+                }
             }
         case DECIMAL:
         case FLOAT:
         case REAL:
-            switch (r.getInteger(0, 5)) {
-            case 0:
-                return new GaussDBFunction("abs", List.of(ensureArg(r, args, returnType)), returnType);
-            case 1:
-                return new GaussDBFunction("ceil", List.of(ensureArg(r, args, returnType)), returnType);
-            case 2:
-                return new GaussDBFunction("floor", List.of(ensureArg(r, args, returnType)), returnType);
-            case 3:
-                return new GaussDBFunction("round",
-                        List.of(ensureArg(r, args, returnType), GaussDBConstant.createIntConstant(r.getInteger(0, 4))),
-                        returnType);
-            case 4:
-                return new GaussDBFunction("trunc",
-                        List.of(ensureArg(r, args, returnType), GaussDBConstant.createIntConstant(r.getInteger(0, 4))),
-                        returnType);
-            default:
-                return new GaussDBFunction("nvl",
-                        List.of(ensureArg(r, args, returnType), ensureArg(r, args, returnType)), returnType);
+            if (isMySQL) {
+                switch (r.getInteger(0, 5)) {
+                case 0:
+                    return new GaussDBFunction("abs", List.of(ensureArg(r, args, returnType)), returnType);
+                case 1:
+                    return new GaussDBFunction("ceil", List.of(ensureArg(r, args, returnType)), returnType);
+                case 2:
+                    return new GaussDBFunction("floor", List.of(ensureArg(r, args, returnType)), returnType);
+                case 3:
+                    return new GaussDBFunction("round",
+                            List.of(ensureArg(r, args, returnType), GaussDBConstant.createIntConstant(r.getInteger(0, 4))),
+                            returnType);
+                case 4:
+                    return new GaussDBFunction("truncate",
+                            List.of(ensureArg(r, args, returnType), GaussDBConstant.createIntConstant(r.getInteger(0, 4))),
+                            returnType);
+                default:
+                    return new GaussDBFunction("ifnull",
+                            List.of(ensureArg(r, args, returnType), ensureArg(r, args, returnType)), returnType);
+                }
+            } else if (isPG) {
+                switch (r.getInteger(0, 4)) {
+                case 0:
+                    return new GaussDBFunction("abs", List.of(ensureArg(r, args, returnType)), returnType);
+                case 1:
+                    return new GaussDBFunction("ceil", List.of(ensureArg(r, args, returnType)), returnType);
+                case 2:
+                    return new GaussDBFunction("floor", List.of(ensureArg(r, args, returnType)), returnType);
+                case 3:
+                    return new GaussDBFunction("round",
+                            List.of(ensureArg(r, args, returnType), GaussDBConstant.createIntConstant(r.getInteger(0, 4))),
+                            returnType);
+                default:
+                    return new GaussDBFunction("coalesce",
+                            List.of(ensureArg(r, args, returnType), ensureArg(r, args, returnType)), returnType);
+                }
+            } else {
+                switch (r.getInteger(0, 5)) {
+                case 0:
+                    return new GaussDBFunction("abs", List.of(ensureArg(r, args, returnType)), returnType);
+                case 1:
+                    return new GaussDBFunction("ceil", List.of(ensureArg(r, args, returnType)), returnType);
+                case 2:
+                    return new GaussDBFunction("floor", List.of(ensureArg(r, args, returnType)), returnType);
+                case 3:
+                    return new GaussDBFunction("round",
+                            List.of(ensureArg(r, args, returnType), GaussDBConstant.createIntConstant(r.getInteger(0, 4))),
+                            returnType);
+                case 4:
+                    return new GaussDBFunction("trunc",
+                            List.of(ensureArg(r, args, returnType), GaussDBConstant.createIntConstant(r.getInteger(0, 4))),
+                            returnType);
+                default:
+                    return new GaussDBFunction("nvl",
+                            List.of(ensureArg(r, args, returnType), ensureArg(r, args, returnType)), returnType);
+                }
             }
         case TEXT:
-            switch (r.getInteger(0, 9)) {
-            case 0:
-                return new GaussDBFunction("lower", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
-            case 1:
-                return new GaussDBFunction("upper", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
-            case 2:
-                return new GaussDBFunction("btrim", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
-            case 3:
-                return new GaussDBFunction("concat",
-                        List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
-                        returnType);
-            case 4:
-                return new GaussDBFunction("substr",
-                        List.of(ensureArg(r, args, GaussDBDataType.TEXT),
-                                GaussDBConstant.createIntConstant(r.getInteger(-2, 5)),
-                                GaussDBConstant.createIntConstant(r.getInteger(0, 5))),
-                        returnType);
-            case 5:
-                return new GaussDBFunction("replace",
-                        List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT),
-                                ensureArg(r, args, GaussDBDataType.TEXT)),
-                        returnType);
-            case 6:
-                return new GaussDBFunction("reverse", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
-            case 7:
-                return new GaussDBFunction("nvl",
-                        List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
-                        returnType);
-            case 8:
-                return new GaussDBFunction("to_char", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
-            default:
-                return new GaussDBFunction("coalesce",
-                        List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
-                        returnType);
+            if (isMySQL) {
+                switch (r.getInteger(0, 8)) {
+                case 0:
+                    return new GaussDBFunction("lower", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 1:
+                    return new GaussDBFunction("upper", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 2:
+                    return new GaussDBFunction("trim", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 3:
+                    return new GaussDBFunction("concat",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 4:
+                    return new GaussDBFunction("substring",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT),
+                                    GaussDBConstant.createIntConstant(r.getInteger(1, 5)),
+                                    GaussDBConstant.createIntConstant(r.getInteger(1, 5))),
+                            returnType);
+                case 5:
+                    return new GaussDBFunction("replace",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT),
+                                    ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 6:
+                    return new GaussDBFunction("reverse", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 7:
+                    return new GaussDBFunction("left",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), GaussDBConstant.createIntConstant(r.getInteger(1, 5))),
+                            returnType);
+                default:
+                    return new GaussDBFunction("ifnull",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                }
+            } else if (isPG) {
+                switch (r.getInteger(0, 7)) {
+                case 0:
+                    return new GaussDBFunction("lower", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 1:
+                    return new GaussDBFunction("upper", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 2:
+                    return new GaussDBFunction("btrim", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 3:
+                    return new GaussDBFunction("concat",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 4:
+                    return new GaussDBFunction("substr",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT),
+                                    GaussDBConstant.createIntConstant(r.getInteger(-2, 5)),
+                                    GaussDBConstant.createIntConstant(r.getInteger(0, 5))),
+                            returnType);
+                case 5:
+                    return new GaussDBFunction("replace",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT),
+                                    ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 6:
+                    return new GaussDBFunction("reverse", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                default:
+                    return new GaussDBFunction("coalesce",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                }
+            } else {
+                switch (r.getInteger(0, 9)) {
+                case 0:
+                    return new GaussDBFunction("lower", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 1:
+                    return new GaussDBFunction("upper", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 2:
+                    return new GaussDBFunction("btrim", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 3:
+                    return new GaussDBFunction("concat",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 4:
+                    return new GaussDBFunction("substr",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT),
+                                    GaussDBConstant.createIntConstant(r.getInteger(-2, 5)),
+                                    GaussDBConstant.createIntConstant(r.getInteger(0, 5))),
+                            returnType);
+                case 5:
+                    return new GaussDBFunction("replace",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT),
+                                    ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 6:
+                    return new GaussDBFunction("reverse", List.of(ensureArg(r, args, GaussDBDataType.TEXT)), returnType);
+                case 7:
+                    return new GaussDBFunction("nvl",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                case 8:
+                    return new GaussDBFunction("to_char", List.of(ensureArg(r, args, GaussDBDataType.INT)), returnType);
+                default:
+                    return new GaussDBFunction("coalesce",
+                            List.of(ensureArg(r, args, GaussDBDataType.TEXT), ensureArg(r, args, GaussDBDataType.TEXT)),
+                            returnType);
+                }
             }
         case DATE:
-            switch (r.getInteger(0, 3)) {
-            case 0:
-                return new GaussDBFunction("add_months",
-                        List.of(ensureArg(r, args, GaussDBDataType.DATE),
-                                GaussDBConstant.createIntConstant(r.getInteger(-12, 12))),
-                        returnType);
-            case 1:
-                return new GaussDBFunction("last_day", List.of(ensureArg(r, args, GaussDBDataType.DATE)), returnType);
-            case 2:
-                return new GaussDBFunction("nvl",
-                        List.of(ensureArg(r, args, GaussDBDataType.DATE), ensureArg(r, args, GaussDBDataType.DATE)),
-                        returnType);
-            default:
-                return new GaussDBFunction("date_trunc",
-                        List.of(GaussDBConstant.createTextConstant("month"),
-                                ensureArg(r, args, GaussDBDataType.DATE)),
-                        returnType);
+            if (isMySQL) {
+                switch (r.getInteger(0, 2)) {
+                case 0:
+                    return new GaussDBFunction("last_day", List.of(ensureArg(r, args, GaussDBDataType.DATE)), returnType);
+                case 1:
+                    return new GaussDBFunction("curdate", Collections.emptyList(), returnType);
+                default:
+                    return new GaussDBFunction("ifnull",
+                            List.of(ensureArg(r, args, GaussDBDataType.DATE), ensureArg(r, args, GaussDBDataType.DATE)),
+                            returnType);
+                }
+            } else if (isPG) {
+                switch (r.getInteger(0, 1)) {
+                case 0:
+                    return new GaussDBFunction("date_trunc",
+                            List.of(GaussDBConstant.createTextConstant("month"),
+                                    ensureArg(r, args, GaussDBDataType.DATE)),
+                            returnType);
+                default:
+                    return new GaussDBFunction("coalesce",
+                            List.of(ensureArg(r, args, GaussDBDataType.DATE), ensureArg(r, args, GaussDBDataType.DATE)),
+                            returnType);
+                }
+            } else {
+                switch (r.getInteger(0, 3)) {
+                case 0:
+                    return new GaussDBFunction("add_months",
+                            List.of(ensureArg(r, args, GaussDBDataType.DATE),
+                                    GaussDBConstant.createIntConstant(r.getInteger(-12, 12))),
+                            returnType);
+                case 1:
+                    return new GaussDBFunction("last_day", List.of(ensureArg(r, args, GaussDBDataType.DATE)), returnType);
+                case 2:
+                    return new GaussDBFunction("nvl",
+                            List.of(ensureArg(r, args, GaussDBDataType.DATE), ensureArg(r, args, GaussDBDataType.DATE)),
+                            returnType);
+                default:
+                    return new GaussDBFunction("date_trunc",
+                            List.of(GaussDBConstant.createTextConstant("month"),
+                                    ensureArg(r, args, GaussDBDataType.DATE)),
+                            returnType);
+                }
             }
         default:
-            return new GaussDBFunction("coalesce",
+            String fallbackNullFn = isMySQL ? "ifnull" : "coalesce";
+            return new GaussDBFunction(fallbackNullFn,
                     List.of(ensureArg(r, args, returnType), ensureArg(r, args, returnType)), returnType);
         }
     }

@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import sqlancer.Randomly;
 import sqlancer.common.gen.TypedExpressionGenerator;
 import sqlancer.gaussdb.GaussDBGlobalState;
+import sqlancer.gaussdb.GaussDBOptions.CompatibilityMode;
 import sqlancer.gaussdb.GaussDBSchema.GaussDBColumn;
 import sqlancer.gaussdb.GaussDBSchema.GaussDBDataType;
 import sqlancer.gaussdb.ast.GaussDBAggregate;
@@ -214,9 +215,14 @@ public final class GaussDBExpressionGenerator
 
     private GaussDBExpression generatePolymorphicFunction(GaussDBDataType type, int depth) {
         String fn;
-        if (type == GaussDBDataType.BOOLEAN && globalState.getDbmsSpecificOptions() != null
+        CompatibilityMode mode = globalState != null ? globalState.getCompatibilityMode() : CompatibilityMode.A;
+        if (type == GaussDBDataType.BOOLEAN && globalState != null && globalState.getDbmsSpecificOptions() != null
                 && globalState.getDbmsSpecificOptions().bypassBooleanTestRangeBug) {
             fn = Randomly.fromOptions("greatest", "least");
+        } else if (mode != null && mode.isMySQL()) {
+            fn = Randomly.fromOptions("ifnull", "coalesce", "nullif", "greatest", "least");
+        } else if (mode != null && mode.isPostgres()) {
+            fn = Randomly.fromOptions("coalesce", "nullif", "greatest", "least");
         } else {
             fn = Randomly.fromOptions("coalesce", "nvl", "nullif", "greatest", "least");
         }

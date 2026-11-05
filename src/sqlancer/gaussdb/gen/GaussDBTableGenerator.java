@@ -9,6 +9,7 @@ import sqlancer.common.query.ExpectedErrors;
 import sqlancer.common.query.SQLQueryAdapter;
 import sqlancer.gaussdb.GaussDBErrors;
 import sqlancer.gaussdb.GaussDBGlobalState;
+import sqlancer.gaussdb.GaussDBOptions.CompatibilityMode;
 import sqlancer.gaussdb.GaussDBSchema.GaussDBColumn;
 import sqlancer.gaussdb.GaussDBSchema.GaussDBDataType;
 import sqlancer.gaussdb.GaussDBSchema.GaussDBTable;
@@ -19,19 +20,26 @@ public class GaussDBTableGenerator {
     private final StringBuilder sb = new StringBuilder();
     private final List<GaussDBColumn> columnsToBeAdded = new ArrayList<>();
     private final GaussDBTable table;
+    private final CompatibilityMode mode;
 
-    public GaussDBTableGenerator(String tableName) {
+    public GaussDBTableGenerator(String tableName, CompatibilityMode mode) {
         this.table = new GaussDBTable(tableName, columnsToBeAdded, null, false, true);
+        this.mode = mode != null ? mode : CompatibilityMode.A;
         errors.add("already exists");
         errors.add("invalid input syntax");
         GaussDBErrors.addCommonExpressionErrors(errors);
     }
 
-    public static SQLQueryAdapter generate(String tableName, GaussDBGlobalState globalState) {
-        return new GaussDBTableGenerator(tableName).generate();
+    public GaussDBTableGenerator(String tableName) {
+        this(tableName, CompatibilityMode.A);
     }
 
-    private SQLQueryAdapter generate() {
+    public static SQLQueryAdapter generate(String tableName, GaussDBGlobalState globalState) {
+        CompatibilityMode m = globalState != null ? globalState.getCompatibilityMode() : CompatibilityMode.A;
+        return new GaussDBTableGenerator(tableName, m).generate();
+    }
+
+    public SQLQueryAdapter generate() {
         sb.append("CREATE TABLE IF NOT EXISTS ").append(table.getName()).append("(");
         for (int i = 0; i < Randomly.smallNumber() + 1; i++) {
             if (i != 0) {
@@ -88,25 +96,45 @@ public class GaussDBTableGenerator {
     private void appendDataType(GaussDBDataType type) {
         switch (type) {
         case INT:
-            sb.append(Randomly.fromOptions("SMALLINT", "INT", "BIGINT"));
+            if (mode.isMySQL()) {
+                sb.append(Randomly.fromOptions("TINYINT", "SMALLINT", "MEDIUMINT", "INT", "BIGINT"));
+            } else if (mode.isPostgres()) {
+                sb.append(Randomly.fromOptions("SMALLINT", "INTEGER", "BIGINT"));
+            } else {
+                sb.append(Randomly.fromOptions("SMALLINT", "INT", "BIGINT"));
+            }
             break;
         case BOOLEAN:
             sb.append("BOOLEAN");
             break;
         case TEXT:
-            sb.append("TEXT");
+            if (mode.isMySQL()) {
+                sb.append(Randomly.fromOptions("VARCHAR(100)", "CHAR(20)", "TEXT", "TINYTEXT"));
+            } else if (mode.isPostgres()) {
+                sb.append(Randomly.fromOptions("VARCHAR(100)", "TEXT", "CHAR(20)"));
+            } else {
+                sb.append("TEXT");
+            }
             break;
         case DECIMAL:
             sb.append("NUMERIC");
             break;
         case FLOAT:
-            sb.append("DOUBLE PRECISION");
+            if (mode.isMySQL()) {
+                sb.append(Randomly.fromOptions("DOUBLE", "FLOAT"));
+            } else {
+                sb.append("DOUBLE PRECISION");
+            }
             break;
         case REAL:
             sb.append("REAL");
             break;
         case DATE:
-            sb.append("DATE");
+            if (mode.isMySQL()) {
+                sb.append(Randomly.fromOptions("DATETIME", "DATE"));
+            } else {
+                sb.append("DATE");
+            }
             break;
         case TIMESTAMP:
             sb.append("TIMESTAMP");

@@ -18,6 +18,28 @@ public class GaussDBOptions implements DBMSSpecificOptions<GaussDBOracleFactory>
     @Parameter(names = "--oracle", description = "Specifies which test oracle should be used for GaussDB")
     public List<GaussDBOracleFactory> oracle = Arrays.asList(GaussDBOracleFactory.CODDTEST);
 
+    public enum CompatibilityMode {
+        AUTO, // Auto-detect dynamically via SHOW sql_compatibility;
+        A,    // Oracle compatibility mode
+        B,    // MySQL / M compatibility mode
+        PG;   // PostgreSQL compatibility mode
+
+        public boolean isOracle() {
+            return this == A;
+        }
+
+        public boolean isMySQL() {
+            return this == B;
+        }
+
+        public boolean isPostgres() {
+            return this == PG;
+        }
+    }
+
+    @Parameter(names = "--compatibility-mode", description = "GaussDB SQL compatibility mode: AUTO, A (Oracle), B (MySQL/M), or PG (PostgreSQL)", arity = 1)
+    public CompatibilityMode compatibilityMode = CompatibilityMode.AUTO;
+
     @Parameter(names = "--connection-url", description = "Specifies the JDBC URL for connecting to GaussDB/openGauss", arity = 1)
     public String connectionURL = String.format("opengauss://%s:%d/postgres", DEFAULT_HOST, DEFAULT_PORT);
 

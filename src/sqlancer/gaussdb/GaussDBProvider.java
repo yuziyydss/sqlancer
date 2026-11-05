@@ -143,6 +143,25 @@ public class GaussDBProvider extends SQLProviderAdapter<GaussDBGlobalState, Gaus
                         s.execute("CREATE SCHEMA " + schemaName);
                         s.execute("SET search_path TO " + schemaName);
                     }
+                    // Detect or enforce SQL compatibility mode (A: Oracle, B: MySQL/M, PG: PostgreSQL)
+                    GaussDBOptions.CompatibilityMode mode = globalState.getDbmsSpecificOptions().compatibilityMode;
+                    if (mode == GaussDBOptions.CompatibilityMode.AUTO) {
+                        try (java.sql.ResultSet rs = s.executeQuery("SHOW sql_compatibility")) {
+                            if (rs.next()) {
+                                String val = rs.getString(1).trim().toUpperCase(java.util.Locale.ROOT);
+                                if (val.contains("B") || val.contains("MYSQL") || val.contains("M")) {
+                                    mode = GaussDBOptions.CompatibilityMode.B;
+                                } else if (val.contains("PG") || val.contains("POSTGRES")) {
+                                    mode = GaussDBOptions.CompatibilityMode.PG;
+                                } else {
+                                    mode = GaussDBOptions.CompatibilityMode.A;
+                                }
+                            }
+                        } catch (SQLException ignored) {
+                            mode = GaussDBOptions.CompatibilityMode.A;
+                        }
+                    }
+                    globalState.setCompatibilityMode(mode);
                     for (String sessionGuc : Arrays.asList("SET disable_gpc_store = on", "SET cursor_sharing = off",
                             "SET spm_enable_plan_capture = off", "SET spm_enable_plan_history_logging = off",
                             "SET instr_unique_sql_track_type = top", "SELECT reset_unique_sql('GLOBAL', 'ALL', 0)",

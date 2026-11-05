@@ -125,7 +125,7 @@ public class GaussDBPLSQLOracle implements TestOracle<GaussDBGlobalState> {
             bundle = buildCursorLoopBundle(fnName, table, col, wherePredicate);
             break;
         case 1:
-            bundle = buildDynamicSQLBundle(fnName, table, col, wherePredicate);
+            bundle = buildDynamicSQLBundle(fnName, table, col, wherePredicate, state.getCompatibilityMode());
             break;
         case 2:
             bundle = buildConditionalBranchBundle(fnName, table, col, wherePredicate);
@@ -169,6 +169,11 @@ public class GaussDBPLSQLOracle implements TestOracle<GaussDBGlobalState> {
 
     public static PLSQLBundle buildDynamicSQLBundle(String fnName, GaussDBTable table, GaussDBColumn col,
             GaussDBExpression wherePredicate) {
+        return buildDynamicSQLBundle(fnName, table, col, wherePredicate, sqlancer.gaussdb.GaussDBOptions.CompatibilityMode.A);
+    }
+
+    public static PLSQLBundle buildDynamicSQLBundle(String fnName, GaussDBTable table, GaussDBColumn col,
+            GaussDBExpression wherePredicate, sqlancer.gaussdb.GaussDBOptions.CompatibilityMode mode) {
         String predStr = GaussDBToStringVisitor.asString(wherePredicate);
         String colName = col.getName();
         String tbl = table.getName();
@@ -176,17 +181,18 @@ public class GaussDBPLSQLOracle implements TestOracle<GaussDBGlobalState> {
         String dynamicQuery = String.format("SELECT COUNT(*), COALESCE(SUM(%s), 0) FROM %s %s WHERE %s",
                 colName, tbl, TABLE_ALIAS, predStr).replace("'", "''");
 
+        String execClause = (mode != null && mode.isPostgres()) ? "EXECUTE" : "EXECUTE IMMEDIATE";
         String createSql = String.format(
                 "CREATE OR REPLACE FUNCTION %s() RETURNS TABLE(cnt INT, total NUMERIC) AS $$%n"
                         + "DECLARE%n"
                         + "    v_cnt INT := 0;%n"
                         + "    v_sum NUMERIC := 0;%n"
                         + "BEGIN%n"
-                        + "    EXECUTE IMMEDIATE '%s' INTO v_cnt, v_sum;%n"
+                        + "    %s '%s' INTO v_cnt, v_sum;%n"
                         + "    RETURN QUERY SELECT v_cnt, v_sum;%n"
                         + "END;%n"
                         + "$$ LANGUAGE plpgsql;",
-                fnName, dynamicQuery);
+                fnName, execClause, dynamicQuery);
 
         String callSql = String.format("SELECT cnt, total FROM %s()", fnName);
         String declSql = String.format("SELECT COUNT(*), COALESCE(SUM(%s), 0) FROM %s %s WHERE %s",

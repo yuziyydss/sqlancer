@@ -51,7 +51,10 @@
 | **EPSC** (等价计划状态检验) | SIGMOD 2020 | 事务与会话状态转换一致性探测。 |
 
 ### 2. GaussDB 企业级特性专属支持
-* **Oracle 模式深度兼容**：全面覆盖 `sql_compatibility = 'A'` 模式下的 Oracle 专有函数（`NVL2`, `LNNVL`, `DECODE`, `ROWNUM`）及语法。
+* **全三模 SQL 兼容性深度支持（Oracle A / MySQL B / PostgreSQL PG）**：提供 `--compatibility-mode AUTO/A/B/PG` 开关，支持动态自适应探测与针对性方言生成：
+  * **A 模式（Oracle 兼容）**：专有函数（`NVL2`, `LNNVL`, `DECODE`, `ROWNUM`, `ADD_MONTHS`, `LAST_DAY`, `BITAND`）、空串即 NULL 语义、PL/SQL 过程化语言与动态 SQL（`EXECUTE IMMEDIATE`）。
+  * **B / M 模式（MySQL 兼容）**：专有函数（`IFNULL`, `IF`, `LOCATE`, `CONCAT_WS`, `SUBSTRING`, `CURDATE`, `NOW`, `DATE_FORMAT`, `UNIX_TIMESTAMP`）、空串非 NULL 独立语义、MySQL 专属类型（`TINYINT`, `MEDIUMINT`, `DATETIME`, `DOUBLE`）。
+  * **PG 模式（PostgreSQL 原生兼容）**：严格 3VL 三值逻辑、原生类型（`INTEGER`, `DOUBLE PRECISION`, `BYTEA`, `JSON/JSONB`）、专有函数（`COALESCE`, `NULLIF`, `DATE_TRUNC`, `AGE`, `JUSTIFY_INTERVAL`）、PL/pgSQL 原生语法（`EXECUTE ... INTO ...`）。
 * **双存储引擎支持**：支持 `WITH (storage_type = astore)`（传统追加写）与 `WITH (storage_type = ustore)`（In-place 原地更新与 UNDO 回滚段）。
 * **高级分区表与动态迁移**：支持 Range / Hash 分区，强制覆盖 `ENABLE ROW MOVEMENT`（跨分区 UPDATE 自动迁移）与局部/全局索引并发更新。
 * **SMP 多线程并行查询**：动态调控 `SET query_dop = 1/2/4`，高频压迫 Parallel SeqScan、Parallel HashJoin 与 Parallel WindowAgg。
@@ -122,7 +125,8 @@ java -jar target/sqlancer-2.0.0.jar --num-threads 2 gaussdb --oracle DQP
 * `--print-progress-summary`：是否定时打印 QPS 吞吐与进度汇总。
 
 ### GaussDB 专有参数 (置于 `gaussdb` 之后)
-* `--oracle`：启用的测试机列表，逗号分隔，可选：`EET`, `CODDTEST`, `DQP`, `DQE`, `THANOS`, `EPSC`, `TLP`, `NOREC`, `ERIQ`, `SRS`, `ARG`。
+* `--compatibility-mode`：指定兼容性方言，可选 `AUTO`（默认，自适应探测 `SHOW sql_compatibility`）、`A`（Oracle 兼容）、`B`（MySQL/M 兼容）、`PG`（PostgreSQL 兼容）。
+* `--oracle`：启用的测试机列表，逗号分隔，可选：`EET`, `CODDTEST`, `DQP`, `DQE`, `THANOS`, `EPSC`, `TLP`, `NOREC`, `ERIQ`, `SRS`, `ARG`, `CERT`, `DDLCHECK`, `EDC`, `WSS`, `JIT`, `BOUNDARY`, `VALSCOPE`, `PLSQL`, `PINOLO`, `JIR`, `SCOR`, `PUPPY`, `DDLUMOS`, `SQLASER`, `ISOREL`, `TXCHECK`, `FUCCI`, `SEDAR`, `DISTSQL`, `IVM`, `ACCIO`。
 * `--bypass-boolean-test-range-bug`：设置为 `true` 时，自动跳过已知的 `BETWEEN SYMMETRIC` 优化折叠与 3VL 范围化简已知缺陷。
 * `--connection-url`：直接指定特定 JDBC 连接串。
 
