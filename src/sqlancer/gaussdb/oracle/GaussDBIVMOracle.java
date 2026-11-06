@@ -169,7 +169,7 @@ public class GaussDBIVMOracle implements TestOracle<GaussDBGlobalState> {
         String mvQuery;
         String baseQuery;
 
-        if (mode == IVMMode.FILTERED_VIEW_PUSHDOWN && !numericCols.isEmpty()) {
+        if (mode == IVMMode.FILTERED_VIEW_PUSHDOWN && !numericCols.isEmpty() && cols.size() >= 2) {
             mvQuery = "SELECT * FROM " + mvName + " WHERE cnt > 0;";
             baseQuery = "SELECT * FROM (" + queryDef + ") AS v WHERE cnt > 0;";
         } else {
