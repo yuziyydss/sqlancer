@@ -32,6 +32,7 @@ import sqlancer.gaussdb.GaussDBGlobalState;
 public class GaussDBAccioOracle implements TestOracle<GaussDBGlobalState> {
 
     private static final AtomicLong COUNTER = new AtomicLong();
+    private static final String ROLE_PASSWORD = "Accio_pass_123!";
 
     private final GaussDBGlobalState state;
     private final ExpectedErrors errors = new ExpectedErrors();
@@ -62,16 +63,18 @@ public class GaussDBAccioOracle implements TestOracle<GaussDBGlobalState> {
 
         private final AccioMode mode;
         private final String roleName;
+        private final String tableName;
         private final List<String> setupStatements;
         private final String testQuery;
         private final String cleanupSql;
         private final String expectedErrorSubstr;
         private final String allowedRLSLabel;
 
-        public AccioBundle(AccioMode mode, String roleName, List<String> setupStatements,
+        public AccioBundle(AccioMode mode, String roleName, String tableName, List<String> setupStatements,
                 String testQuery, String cleanupSql, String expectedErrorSubstr, String allowedRLSLabel) {
             this.mode = mode;
             this.roleName = roleName;
+            this.tableName = tableName;
             this.setupStatements = setupStatements;
             this.testQuery = testQuery;
             this.cleanupSql = cleanupSql;
@@ -85,6 +88,10 @@ public class GaussDBAccioOracle implements TestOracle<GaussDBGlobalState> {
 
         public String getRoleName() {
             return roleName;
+        }
+
+        public String getTableName() {
+            return tableName;
         }
 
         public List<String> getSetupStatements() {
@@ -121,15 +128,16 @@ public class GaussDBAccioOracle implements TestOracle<GaussDBGlobalState> {
         executeBundle(connection, bundle);
     }
 
-    private AccioBundle generateBundle(AccioMode mode, String roleName, String tableName) {
+    AccioBundle generateBundle(AccioMode mode, String roleName, String tableName) {
         List<String> setup = new ArrayList<>();
         String testQuery;
         String cleanupSql;
         String expectedError = "permission denied";
         String allowedLabel = null;
+        String currentUser = state.getOptions().getUserName();
 
         // Cleanup script always resets role and cleans up role & table
-        cleanupSql = String.format("RESET ROLE; DROP TABLE IF EXISTS %s CASCADE; DROP ROLE IF EXISTS %s;", tableName, roleName);
+        cleanupSql = String.format("RESET ROLE; REVOKE %s FROM %s; DROP TABLE IF EXISTS %s CASCADE; DROP ROLE IF EXISTS %s;", roleName, currentUser, tableName, roleName);
 
         switch (mode) {
         case RBAC_TABLE_ACCESS_CONTROL:
@@ -137,9 +145,10 @@ public class GaussDBAccioOracle implements TestOracle<GaussDBGlobalState> {
             setup.add(String.format("CREATE TABLE %s (id INT, info VARCHAR(64));", tableName));
             setup.add(String.format("INSERT INTO %s VALUES (1, 'sensitive_data_1'), (2, 'sensitive_data_2');", tableName));
             setup.add(String.format("DROP ROLE IF EXISTS %s;", roleName));
-            setup.add(String.format("CREATE ROLE %s PASSWORD 'Accio_pass_123!';", roleName));
+            setup.add(String.format("CREATE ROLE %s PASSWORD '%s';", roleName, ROLE_PASSWORD));
+            setup.add(String.format("GRANT %s TO %s;", roleName, currentUser));
             setup.add(String.format("REVOKE ALL ON %s FROM %s;", tableName, roleName));
-            setup.add(String.format("SET ROLE %s;", roleName));
+            setup.add(String.format("SET ROLE %s PASSWORD '%s';", roleName, ROLE_PASSWORD));
 
             testQuery = String.format("SELECT * FROM %s;", tableName);
             break;
@@ -149,10 +158,11 @@ public class GaussDBAccioOracle implements TestOracle<GaussDBGlobalState> {
             setup.add(String.format("CREATE TABLE %s (id INT, public_col VARCHAR(64), secret_col VARCHAR(64));", tableName));
             setup.add(String.format("INSERT INTO %s VALUES (1, 'public_ok', 'cve_super_secret_token');", tableName));
             setup.add(String.format("DROP ROLE IF EXISTS %s;", roleName));
-            setup.add(String.format("CREATE ROLE %s PASSWORD 'Accio_pass_123!';", roleName));
+            setup.add(String.format("CREATE ROLE %s PASSWORD '%s';", roleName, ROLE_PASSWORD));
+            setup.add(String.format("GRANT %s TO %s;", roleName, currentUser));
             setup.add(String.format("REVOKE ALL ON %s FROM %s;", tableName, roleName));
             setup.add(String.format("GRANT SELECT (public_col) ON %s TO %s;", tableName, roleName));
-            setup.add(String.format("SET ROLE %s;", roleName));
+            setup.add(String.format("SET ROLE %s PASSWORD '%s';", roleName, ROLE_PASSWORD));
 
             // Attempt to query the denied column directly or via expression
             testQuery = String.format("SELECT secret_col FROM %s;", tableName);
@@ -167,24 +177,39 @@ public class GaussDBAccioOracle implements TestOracle<GaussDBGlobalState> {
             setup.add(String.format("INSERT INTO %s VALUES (1, 'PUBLIC', 'allowed_1'), (2, 'CONFIDENTIAL', 'leak_1'), (3, 'PUBLIC', 'allowed_2'), (4, 'RESTRICTED', 'leak_2');", tableName));
             setup.add(String.format("ALTER TABLE %s ENABLE ROW LEVEL SECURITY;", tableName));
             setup.add(String.format("DROP ROLE IF EXISTS %s;", roleName));
-            setup.add(String.format("CREATE ROLE %s PASSWORD 'Accio_pass_123!';", roleName));
+            setup.add(String.format("CREATE ROLE %s PASSWORD '%s';", roleName, ROLE_PASSWORD));
+            setup.add(String.format("GRANT %s TO %s;", roleName, currentUser));
             setup.add(String.format("GRANT SELECT ON %s TO %s;", tableName, roleName));
             setup.add(String.format("CREATE ROW LEVEL SECURITY POLICY %s ON %s FOR SELECT TO %s USING (sec_level = '%s');",
                     polName, tableName, roleName, allowedLabel));
-            setup.add(String.format("SET ROLE %s;", roleName));
+            setup.add(String.format("SET ROLE %s PASSWORD '%s';", roleName, ROLE_PASSWORD));
 
             testQuery = String.format("SELECT sec_level, data_content FROM %s;", tableName);
             expectedError = null; // Should succeed with filtered rows
             break;
         }
 
-        return new AccioBundle(mode, roleName, setup, testQuery, cleanupSql, expectedError, allowedLabel);
+        return new AccioBundle(mode, roleName, tableName, setup, testQuery, cleanupSql, expectedError, allowedLabel);
     }
 
     private void executeBundle(SQLConnection connection, AccioBundle bundle) throws SQLException {
+        String currentSchema = null;
         try (Statement statement = connection.createStatement()) {
+            try (ResultSet schemaResultSet = statement.executeQuery("SELECT current_schema()")) {
+                if (schemaResultSet.next()) {
+                    currentSchema = schemaResultSet.getString(1);
+                }
+            }
+
             for (String sql : bundle.getSetupStatements()) {
+                if (sql.startsWith("SET ROLE ") && currentSchema != null && !currentSchema.isEmpty()) {
+                    statement.execute("GRANT USAGE ON SCHEMA " + quoteIdentifier(currentSchema) + " TO " + bundle.getRoleName());
+                }
                 statement.execute(sql);
+            }
+
+            if (currentSchema != null && !currentSchema.isEmpty()) {
+                statement.execute("SET search_path TO " + quoteIdentifier(currentSchema));
             }
 
             if (bundle.getMode() == AccioMode.ROW_LEVEL_SECURITY_ENFORCEMENT) {
@@ -230,10 +255,20 @@ public class GaussDBAccioOracle implements TestOracle<GaussDBGlobalState> {
             throw e;
         } finally {
             try (Statement cleanStmt = connection.createStatement()) {
-                cleanStmt.execute(bundle.getCleanupSql());
+                cleanStmt.execute("RESET ROLE");
+                if (currentSchema != null && !currentSchema.isEmpty()) {
+                    cleanStmt.execute("SET search_path TO " + quoteIdentifier(currentSchema));
+                    cleanStmt.execute("REVOKE USAGE ON SCHEMA " + quoteIdentifier(currentSchema) + " FROM " + bundle.getRoleName());
+                }
+                cleanStmt.execute("DROP TABLE IF EXISTS " + bundle.getTableName() + " CASCADE");
+                cleanStmt.execute("DROP ROLE IF EXISTS " + bundle.getRoleName());
             } catch (Exception ignored) {
             }
         }
+    }
+
+    private static String quoteIdentifier(String identifier) {
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
 
     public static void verifyNegativeAccessBlocked(boolean accessSucceeded, String role, String resource) {

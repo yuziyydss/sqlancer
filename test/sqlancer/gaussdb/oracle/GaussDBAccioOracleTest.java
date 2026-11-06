@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -11,6 +12,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import sqlancer.MainOptions;
+import sqlancer.gaussdb.GaussDBGlobalState;
 import sqlancer.gaussdb.oracle.GaussDBAccioOracle.AccioBundle;
 import sqlancer.gaussdb.oracle.GaussDBAccioOracle.AccioMode;
 
@@ -21,6 +24,7 @@ class GaussDBAccioOracleTest {
         AccioBundle bundle = new AccioBundle(
                 AccioMode.RBAC_TABLE_ACCESS_CONTROL,
                 "role_test",
+                "table_test",
                 Collections.singletonList("CREATE ROLE role_test;"),
                 "SELECT * FROM t0;",
                 "DROP ROLE role_test;",
@@ -30,6 +34,20 @@ class GaussDBAccioOracleTest {
         assertNotNull(bundle);
         assertEquals(AccioMode.RBAC_TABLE_ACCESS_CONTROL, bundle.getMode());
         assertEquals("role_test", bundle.getRoleName());
+    }
+
+    @Test
+    void testRoleSwitchGrantsRoleAndUsesPassword() {
+        GaussDBGlobalState state = new GaussDBGlobalState();
+        state.setMainOptions(new MainOptions());
+        GaussDBAccioOracle oracle = new GaussDBAccioOracle(state);
+
+        AccioBundle bundle = oracle.generateBundle(AccioMode.RBAC_TABLE_ACCESS_CONTROL,
+                "accio_role_test", "accio_tab_test");
+
+        assertTrue(bundle.getSetupStatements().contains("GRANT accio_role_test TO sqlancer;"));
+        assertTrue(bundle.getSetupStatements().contains("SET ROLE accio_role_test PASSWORD 'Accio_pass_123!';"));
+        assertTrue(bundle.getCleanupSql().startsWith("RESET ROLE; REVOKE accio_role_test FROM sqlancer;"));
     }
 
     @Test
